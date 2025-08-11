@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WAV 音檔上傳與播放控制器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+      <header class="text-center mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">
+          音檔播放控制器
+        </h1>
+        <p class="mt-2 text-lg text-gray-600">
+          上傳 WAV 檔案，並透過 MQTT 指令進行播放
+        </p>
+      </header>
+
+      <!-- 提示訊息區塊 -->
+      {% with messages = get_flashed_messages() %} {% if messages %}
+      <div
+        class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6"
+        role="alert">
+        <p class="font-bold">通知</p>
+        <ul class="list-disc list-inside">
+          {% for message in messages %}
+          <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %} {% endwith %}
+
+      <!-- 上傳表單區塊 -->
+      <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">上傳音檔</h2>
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+          <div>
+            <label
+              for="file-upload"
+              class="block text-sm font-medium text-gray-700 mb-2"
+              >選擇檔案 (可多選，僅限 .wav 格式):</label
+            >
+            <input
+              type="file"
+              name="files[]"
+              id="file-upload"
+              multiple
+              class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 transition-colors duration-200"
+              accept=".wav" />
+          </div>
+          <div>
+            <button
+              type="submit"
+              class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">
+              上傳檔案
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 已上傳檔案列表 -->
+      <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">
+          伺服器上的音檔 (支援001-120.wav)
+        </h2>
+        {% if uploaded_files %}
+        <div class="mb-4">
+          <p class="text-sm text-gray-600">
+            總共上傳檔案: {{ uploaded_files|length }} 個
+          </p>
+        </div>
+        <div class="max-h-96 overflow-y-auto">
+          <div
+            class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 text-center">
+            {% for file in uploaded_files %}
+            <div
+              class="bg-gray-100 hover:bg-blue-100 p-2 rounded-lg text-xs font-mono truncate border transition-colors"
+              title="檔案: {{ file }} | MQTT指令: play{{ file.split('.')[0] }}">
+              {{ file.split('.')[0] }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+          <h3 class="font-semibold text-sm mb-2">使用說明:</h3>
+          <ul class="text-xs text-gray-600 space-y-1">
+            <li>• 上傳 001.wav 到 120.wav 格式的檔案</li>
+            <li>• 使用 MQTT 發送 "play001" 到 "play120" 指令播放對應音檔</li>
+            <li>• 主題: puffin-test | Broker: broker.MQTTGO.io:1883</li>
+          </ul>
+        </div>
+        {% else %}
+        <p class="text-gray-500">目前 'uploads' 資料夾中沒有任何檔案。</p>
+        <div class="mt-4 p-4 bg-yellow-50 rounded-lg">
+          <p class="text-sm text-gray-600">
+            請上傳 001.wav 到 120.wav 格式的音檔檔案
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <footer class="text-center mt-12 text-gray-500 text-sm">
+        <p>Python MQTT Player v1.0</p>
+      </footer>
+    </div>
+  </body>
+</html>

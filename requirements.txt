@@ -1,0 +1,5 @@
+Flask>=2.0.0
+paho-mqtt>=1.6.0
+pygame>=2.0.0
+Werkzeug>=2.0.0
+pyinstaller>=5.0.0
