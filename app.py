@@ -3,7 +3,8 @@ import socket
 import threading
 import queue
 import time
-from flask import Flask, request, render_template, flash, redirect, url_for
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import paho.mqtt.client as mqtt
 import pygame
@@ -19,6 +20,7 @@ playback_queue = queue.Queue()
 
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
+CORS(app)  # 啟用 CORS 支援 Vue.js 前端
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = 'a_very_secret_key_for_flash_messages' # 用於顯示提示訊息
 
@@ -128,40 +130,58 @@ def setup_mqtt_client():
         return None
 
 # --- Flask 網頁路由 ---
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        # 檢查是否有檔案在請求中
-        if 'files[]' not in request.files:
-            flash('請求中沒有檔案部分')
-            return redirect(request.url)
+@app.route('/')
+def vue_app():
+    """Vue.js 魔法音樂學院前端頁面 (主頁面)"""
+    return send_from_directory('.', 'index.html')
 
-        files = request.files.getlist('files[]')
-        uploaded_count = 0
-        for file in files:
-            # 如果使用者沒有選擇檔案，瀏覽器可能會送出一個沒有檔名的空檔案
-            if file.filename == '':
-                continue
-            
-            if file and allowed_file(file.filename):
-                # 使用 secure_filename 確保檔名安全
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                uploaded_count += 1
-        
-        if uploaded_count > 0:
-            flash(f'成功上傳 {uploaded_count} 個檔案！')
-        else:
-            flash('沒有選擇任何有效的 .wav 檔案。')
-        return redirect(url_for('upload_file'))
-
-    # 顯示目前已上傳的檔案列表
+# --- API 路由 (供 Vue.js 前端使用) ---
+@app.route('/api/files', methods=['GET'])
+def api_get_files():
+    """取得已上傳的檔案列表"""
     if os.path.exists(UPLOAD_FOLDER):
         uploaded_files = sorted(os.listdir(UPLOAD_FOLDER))
     else:
         uploaded_files = []
+    
+    return jsonify({
+        'files': uploaded_files,
+        'count': len(uploaded_files)
+    })
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload_files():
+    """上傳檔案 API"""
+    if 'files[]' not in request.files:
+        return jsonify({'success': False, 'message': '請求中沒有檔案部分'}), 400
+
+    files = request.files.getlist('files[]')
+    uploaded_count = 0
+    uploaded_files = []
+    
+    for file in files:
+        if file.filename == '':
+            continue
         
-    return render_template('index.html', uploaded_files=uploaded_files)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            uploaded_count += 1
+            uploaded_files.append(filename)
+    
+    if uploaded_count > 0:
+        return jsonify({
+            'success': True, 
+            'message': f'成功上傳 {uploaded_count} 個檔案！',
+            'uploaded_files': uploaded_files,
+            'count': uploaded_count
+        })
+    else:
+        return jsonify({
+            'success': False, 
+            'message': '沒有選擇任何有效的 .wav 檔案。'
+        }), 400
+
 
 # --- 主程式進入點 ---
 if __name__ == '__main__':

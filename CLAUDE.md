@@ -2,85 +2,113 @@
 
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+此檔案為 Claude Code (claude.ai/code) 在此專案中工作時提供指導。
 
-## 项目概述
+## 專案概述
 
-这是一个 Python MQTT 音频播放器应用程序，结合了 Flask Web 界面和 MQTT 消息订阅功能。应用程序允许用户通过 Web 界面上传 WAV 音频文件，然后通过 MQTT 消息远程触发音频播放。
+🎵 **魔法音樂學院** - 一個具有暖色系小學開學風格和魔法學院感覺的 MQTT 音檔播放控制器，使用 Vue.js 前端和 Flask API 後端。
 
-## 核心架构
+## 核心架構
 
-应用程序采用多线程架构，包含三个主要组件：
+應用程式採用多執行緒架構，包含四個主要組件：
 
-1. **Flask Web 服务器** (主线程)：提供文件上传界面
-2. **MQTT 客户端** (后台线程)：订阅 "puffin-test" 主题，接收播放指令
-3. **音频播放工作线程** (后台守护线程)：处理音频播放队列
+1. **Flask API 伺服器** (主執行緒)：提供 RESTful API 和檔案上傳功能
+2. **Vue.js 前端** (瀏覽器)：提供魔法學院風格的使用者介面
+3. **MQTT 客戶端** (背景執行緒)：訂閱 "puffin-test" 主題，接收播放指令
+4. **音訊播放工作執行緒** (背景守護執行緒)：處理音訊播放佇列
 
-### 关键组件说明
+### 關鍵組件說明
 
-- **音频队列系统**：使用 `queue.Queue()` 实现线程安全的播放队列
-- **MQTT 消息格式**：接收 "playXXX" 格式的消息（如 "play001"），播放对应的 XXX.wav 文件
-- **文件存储**：所有上传的音频文件存储在 `uploads/` 目录中
-- **MQTT Broker**：连接到 "broker.MQTTGO.io:1883"
+- **音訊佇列系統**：使用 `queue.Queue()` 實現執行緒安全的播放佇列
+- **MQTT 訊息格式**：接收 "playXXX" 格式的訊息（如 "play001"），播放對應的 XXX.wav 檔案
+- **檔案儲存**：所有上傳的音訊檔案儲存在 `uploads/` 目錄中
+- **MQTT Broker**：連接到 "broker.MQTTGO.io:1883"
 
-## 运行命令
+## 執行指令
 
-### 启动应用程序
+### 啟動應用程式
 
 ```bash
 python app.py
 ```
 
-应用程序会：
+應用程式會：
 
-- 在端口 5000 启动 Flask web 服务器 (http://0.0.0.0:5000)
-- 自动创建 `uploads/` 目录（如果不存在）
-- 启动音频播放工作线程
-- 连接到 MQTT broker 并订阅 "puffin-test" 主题
+- 在 5000 埠啟動 Flask web 伺服器 (http://0.0.0.0:5000)
+- 自動建立 `uploads/` 目錄（如果不存在）
+- 啟動音訊播放工作執行緒
+- 連接到 MQTT broker 並訂閱 "puffin-test" 主題
 
-### 依赖项
+### 相依性套件
 
-应用程序需要以下 Python 包：
+應用程式需要以下 Python 套件：
 
-- Flask: Web 框架
-- paho-mqtt: MQTT 客户端库
-- playsound: 音频播放库
-- werkzeug: Flask 依赖项（文件上传安全性）
+- Flask: Web 框架和 API 伺服器
+- flask-cors: 跨域資源共享支援 (支援 Vue.js 前端)
+- paho-mqtt: MQTT 客戶端函式庫
+- werkzeug: Flask 相依性套件（檔案上傳安全性）
+- pygame: 音訊播放引擎
 
-可以通过以下命令安装依赖：
+可以透過以下指令安裝相依性套件：
 
 ```bash
-pip install flask paho-mqtt playsound werkzeug
+pip install flask flask-cors paho-mqtt werkzeug pygame
 ```
 
-## 文件结构
+## 檔案結構
 
 ```
 pythonmqttplayer/
-├── app.py              # 主应用程序文件
-├── templates/
-│   └── index.html      # Web 界面模板
-└── uploads/            # 音频文件存储目录（运行时创建）
+├── app.py              # 主應用程式檔案 (Flask API 後端)
+├── index.html          # Vue.js 魔法學院風格前端 (主界面)
+└── uploads/            # 音訊檔案儲存目錄（執行時建立）
 ```
 
-## 开发注意事项
+## 前端介面
 
-### MQTT 消息格式
+### Vue.js 魔法學院界面
 
-- 主题：`puffin-test`
-- 消息格式：`playXXX`（XXX 为数字，对应 XXX.wav 文件）
-- 示例：发送 "play001" 播放 "001.wav"
+- **訪問路徑**: `http://localhost:5000/` (主頁面)
+- **風格**: 暖色系小學開學風格 + 魔法學院元素
+- **功能**: 
+  - 🎵 音檔上傳 (拖放支援)
+  - 📚 魔法音樂圖書館 (檔案列表)
+  - ✨ 動畫效果和魔法裝飾
+  - 🔄 即時檔案列表更新
+
+### API 端點
+
+- `GET /api/files` - 取得已上傳檔案列表
+- `POST /api/upload` - 上傳音檔檔案
+- `GET /` - Vue.js 魔法學院主界面
+
+## 開發注意事項
+
+### MQTT 訊息格式
+
+- 主題：`puffin-test`
+- 訊息格式：`playXXX`（XXX 為數字，對應 XXX.wav 檔案）
+- 範例：發送 "play001" 播放 "001.wav"
 
 ### 安全配置
 
-- 使用 `secure_filename()` 处理文件上传安全性
-- 限制上传文件类型为 .wav 格式
-- Flask SECRET_KEY 需要在生产环境中更改
+- 使用 `secure_filename()` 處理檔案上傳安全性
+- 限制上傳檔案類型為 .wav 格式
+- Flask SECRET_KEY 需要在正式環境中更改
 
-### 调试模式
+### 偵錯模式
 
-应用程序默认以 debug=True 运行，但使用 use_reloader=False 避免服务重复启动的问题。
+應用程式預設以 debug=True 執行，但使用 use_reloader=False 避免服務重複啟動的問題。
 
-### 客户端 ID 生成
+### 前端技術
 
-MQTT 客户端 ID 使用本机 IP 地址，如果无法获取则使用默认值 "default_client_id_12345"。
+- **Vue.js 3**: 響應式前端框架
+- **Tailwind CSS**: 快速樣式設計
+- **Font Awesome**: 圖示庫
+- **Google Fonts**: Noto Sans TC + Comic Neue 字體
+- **暖色系配色**: 橙色、黃色、粉紅色為主調
+- **魔法元素**: 星星、魔法杖、城堡等裝飾
+
+### 客戶端 ID 產生
+
+MQTT 客戶端 ID 使用本機 IP 位址，如果無法取得則使用預設值 "default_client_id_12345"。

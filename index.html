@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 魔法音樂學院 - 音檔播放控制器</title>
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Comic+Neue:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* 自定義暖色系配色 */
+        :root {
+            --warm-orange: #FF8A65;
+            --warm-yellow: #FFD54F;
+            --warm-red: #FF7043;
+            --warm-pink: #F8BBD9;
+            --magic-purple: #9C27B0;
+            --magic-blue: #3F51B5;
+            --warm-green: #81C784;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', 'Comic Neue', sans-serif;
+            background: linear-gradient(135deg, #FFE0B2 0%, #FFCC80 50%, #FFB74D 100%);
+            min-height: 100vh;
+        }
+
+        .magic-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--warm-orange);
+            box-shadow: 0 8px 32px rgba(255, 138, 101, 0.3);
+        }
+
+        .magic-button {
+            background: linear-gradient(45deg, var(--warm-orange), var(--warm-red));
+            transition: all 0.3s ease;
+            transform: perspective(1px) translateZ(0);
+        }
+
+        .magic-button:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 112, 67, 0.4);
+        }
+
+        .file-grid-item {
+            background: linear-gradient(45deg, var(--warm-yellow), var(--warm-pink));
+            transition: all 0.3s ease;
+        }
+
+        .file-grid-item:hover {
+            transform: translateY(-5px) rotate(2deg);
+            box-shadow: 0 8px 25px rgba(248, 187, 217, 0.6);
+        }
+
+        .sparkle {
+            animation: sparkle 2s infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .magic-title {
+            background: linear-gradient(45deg, var(--magic-purple), var(--magic-blue), var(--warm-orange));
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-shift 3s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 背景裝飾 -->
+        <div class="fixed inset-0 pointer-events-none overflow-hidden">
+            <div class="absolute top-10 left-10 text-6xl text-yellow-300 sparkle">⭐</div>
+            <div class="absolute top-20 right-20 text-4xl text-pink-300 sparkle">🌟</div>
+            <div class="absolute bottom-20 left-20 text-5xl text-orange-300 sparkle">✨</div>
+            <div class="absolute bottom-10 right-10 text-4xl text-purple-300 sparkle">🪄</div>
+            <div class="absolute top-1/2 left-1/4 text-3xl text-yellow-400 float-animation">📚</div>
+            <div class="absolute top-1/3 right-1/3 text-3xl text-red-400 float-animation">🎒</div>
+        </div>
+
+        <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-6xl relative z-10">
+            <!-- 標題區域 -->
+            <header class="text-center mb-8">
+                <h1 class="text-4xl sm:text-6xl font-bold magic-title mb-4">
+                    🎵 魔法音樂學院 🏰
+                </h1>
+                <p class="text-xl sm:text-2xl text-orange-800 font-semibold">
+                    🎯 歡迎來到神奇的音檔播放控制器！
+                </p>
+                <p class="mt-2 text-lg text-orange-600">
+                    ✨ 上傳你的音樂魔法，透過 MQTT 咒語進行播放 ✨
+                </p>
+            </header>
+
+            <!-- 通知訊息 -->
+            <div v-if="notification.show" 
+                 :class="notification.type === 'success' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700'"
+                 class="border-l-4 p-4 rounded-lg mb-6 magic-card">
+                <div class="flex items-center">
+                    <i :class="notification.type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'" 
+                       class="mr-3 text-xl"></i>
+                    <p class="font-bold">{{ notification.type === 'success' ? '🎉 成功！' : '⚠️ 注意！' }}</p>
+                </div>
+                <p class="mt-1">{{ notification.message }}</p>
+            </div>
+
+            <!-- 上傳區域 -->
+            <div class="magic-card p-6 sm:p-8 rounded-2xl mb-8">
+                <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-orange-800 flex items-center">
+                    <i class="fas fa-upload mr-3 text-orange-600"></i>
+                    📝 上傳音樂卷軸
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="file-upload" class="block text-lg font-semibold text-orange-700 mb-3">
+                            🎵 選擇魔法音檔 (可多選，僅限 .wav 格式):
+                        </label>
+                        <input
+                            type="file"
+                            ref="fileInput"
+                            @change="handleFileSelect"
+                            multiple
+                            accept=".wav"
+                            class="block w-full text-lg text-orange-700 
+                                   file:mr-4 file:py-3 file:px-6 file:rounded-full 
+                                   file:border-0 file:text-lg file:font-semibold 
+                                   file:bg-yellow-100 file:text-orange-700 
+                                   hover:file:bg-yellow-200 transition-all duration-300
+                                   file:shadow-lg hover:file:shadow-xl">
+                    </div>
+                    
+                    <div v-if="selectedFiles.length > 0" class="bg-yellow-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-orange-800 mb-2">📋 已選擇的檔案:</h3>
+                        <ul class="space-y-1">
+                            <li v-for="file in selectedFiles" :key="file.name" 
+                                class="text-orange-700 flex items-center">
+                                <i class="fas fa-music mr-2 text-yellow-600"></i>
+                                {{ file.name }}
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <button
+                        @click="uploadFiles"
+                        :disabled="selectedFiles.length === 0 || uploading"
+                        class="magic-button w-full sm:w-auto px-8 py-4 
+                               text-white text-xl font-bold rounded-xl 
+                               disabled:opacity-50 disabled:cursor-not-allowed
+                               flex items-center justify-center space-x-3">
+                        <i v-if="uploading" class="fas fa-spinner fa-spin"></i>
+                        <i v-else class="fas fa-magic"></i>
+                        <span>{{ uploading ? '🔮 施展上傳魔法中...' : '🚀 開始上傳！' }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 檔案列表區域 -->
+            <div class="magic-card p-6 sm:p-8 rounded-2xl">
+                <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-orange-800 flex items-center">
+                    <i class="fas fa-list mr-3 text-orange-600"></i>
+                    📚 魔法音樂圖書館 (支援001-120.wav)
+                </h2>
+                
+                <div v-if="files.length > 0">
+                    <div class="mb-6 flex items-center space-x-4">
+                        <div class="bg-orange-100 px-4 py-2 rounded-lg">
+                            <p class="text-orange-800 font-semibold">
+                                📊 總共收藏: {{ files.length }} 首魔法音樂
+                            </p>
+                        </div>
+                        <button @click="refreshFiles" 
+                                :disabled="loading"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg
+                                       transition-colors duration-200 flex items-center space-x-2">
+                            <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
+                            <span>{{ loading ? '更新中...' : '🔄 重新整理' }}</span>
+                        </button>
+                    </div>
+                    
+                    <div class="max-h-96 overflow-y-auto mb-6">
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
+                            <div v-for="file in files" :key="file" 
+                                 class="file-grid-item p-3 rounded-xl text-center 
+                                        font-bold text-orange-800 cursor-pointer
+                                        border-2 border-orange-200"
+                                 :title="'檔案: ' + file + ' | MQTT指令: play' + file.split('.')[0]">
+                                <div class="text-lg">🎵</div>
+                                <div class="text-sm font-mono">{{ file.split('.')[0] }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 使用說明 -->
+                    <div class="bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-xl border-2 border-purple-200">
+                        <h3 class="font-bold text-lg mb-3 text-purple-800 flex items-center">
+                            <i class="fas fa-book-open mr-2"></i>
+                            📖 魔法咒語使用手冊:
+                        </h3>
+                        <ul class="space-y-2 text-purple-700">
+                            <li class="flex items-start">
+                                <span class="mr-2">🔮</span>
+                                上傳 001.wav 到 120.wav 格式的魔法音檔
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">⚡</span>
+                                使用 MQTT 發送 "play001" 到 "play120" 咒語播放對應音檔
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">🌐</span>
+                                魔法傳送門: <code class="bg-purple-200 px-2 py-1 rounded text-sm">puffin-test</code>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">🏰</span>
+                                魔法城堡: <code class="bg-purple-200 px-2 py-1 rounded text-sm">broker.MQTTGO.io:1883</code>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div v-else class="text-center py-12">
+                    <div class="text-6xl mb-4">📭</div>
+                    <p class="text-xl text-orange-600 mb-2">目前圖書館是空的呢！</p>
+                    <p class="text-lg text-orange-500">趕快上傳一些魔法音樂吧！ ✨</p>
+                </div>
+            </div>
+
+            <!-- 頁腳 -->
+            <footer class="text-center mt-12">
+                <div class="magic-card p-4 rounded-xl inline-block">
+                    <p class="text-orange-800 font-semibold">
+                        🎓 Python MQTT 魔法音樂學院 v2.0 
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-heart text-red-500"></i>
+                        Made with Magic ✨
+                    </p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    files: [],
+                    selectedFiles: [],
+                    loading: false,
+                    uploading: false,
+                    notification: {
+                        show: false,
+                        type: 'success',
+                        message: ''
+                    }
+                }
+            },
+            
+            mounted() {
+                this.loadFiles();
+            },
+            
+            methods: {
+                async loadFiles() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/files');
+                        const data = await response.json();
+                        this.files = data.files;
+                    } catch (error) {
+                        this.showNotification('error', '無法載入檔案列表: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                handleFileSelect(event) {
+                    this.selectedFiles = Array.from(event.target.files);
+                },
+                
+                async uploadFiles() {
+                    if (this.selectedFiles.length === 0) return;
+                    
+                    this.uploading = true;
+                    const formData = new FormData();
+                    
+                    this.selectedFiles.forEach(file => {
+                        formData.append('files[]', file);
+                    });
+                    
+                    try {
+                        const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.showNotification('success', data.message);
+                            this.selectedFiles = [];
+                            this.$refs.fileInput.value = '';
+                            await this.loadFiles();
+                        } else {
+                            this.showNotification('error', data.message);
+                        }
+                    } catch (error) {
+                        this.showNotification('error', '上傳失敗: ' + error.message);
+                    } finally {
+                        this.uploading = false;
+                    }
+                },
+                
+                async refreshFiles() {
+                    await this.loadFiles();
+                    this.showNotification('success', '檔案列表已更新！');
+                },
+                
+                showNotification(type, message) {
+                    this.notification = {
+                        show: true,
+                        type: type,
+                        message: message
+                    };
+                    
+                    setTimeout(() => {
+                        this.notification.show = false;
+                    }, 5000);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
