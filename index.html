@@ -134,6 +134,48 @@
                 <p class="mt-1">{{ notification.message }}</p>
             </div>
 
+            <!-- 播放設定區域 -->
+            <div class="magic-card p-6 rounded-2xl mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-orange-800 flex items-center">
+                    <i class="fas fa-cog mr-3 text-orange-600"></i>
+                    ⚙️ 魔法播放設定
+                </h2>
+                
+                <div class="flex flex-wrap items-center gap-6">
+                    <!-- 只播放一次選項 -->
+                    <div class="flex items-center space-x-3">
+                        <input
+                            type="checkbox"
+                            id="playOnceMode"
+                            v-model="playOnceMode"
+                            class="w-5 h-5 text-orange-600 bg-yellow-100 border-orange-300 rounded 
+                                   focus:ring-orange-500 focus:ring-2">
+                        <label for="playOnceMode" class="text-lg font-semibold text-orange-800 cursor-pointer">
+                            🎯 是否只播放一次
+                        </label>
+                    </div>
+                    
+                    <!-- 重置全部按鈕 -->
+                    <button
+                        v-if="playOnceMode"
+                        @click="resetAllPlayedFiles"
+                        class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg
+                               transition-colors duration-200 flex items-center space-x-2">
+                        <i class="fas fa-undo-alt"></i>
+                        <span>🔄 重置全部</span>
+                    </button>
+                </div>
+                
+                <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                    <p class="text-sm text-orange-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        {{ playOnceMode ? 
+                           '🎵 每個音檔只能播放一次，播放後會標記為已播放狀態' : 
+                           '🔁 音檔可以重複播放，沒有次數限制' }}
+                    </p>
+                </div>
+            </div>
+
             <!-- 上傳區域 -->
             <div class="magic-card p-6 sm:p-8 rounded-2xl mb-8">
                 <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-orange-800 flex items-center">
@@ -209,14 +251,44 @@
                     </div>
                     
                     <div class="max-h-96 overflow-y-auto mb-6">
-                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
-                            <div v-for="file in files" :key="file" 
-                                 class="file-grid-item p-3 rounded-xl text-center 
-                                        font-bold text-orange-800 cursor-pointer
-                                        border-2 border-orange-200"
-                                 :title="'檔案: ' + file + ' | MQTT指令: play' + file.split('.')[0]">
-                                <div class="text-lg">🎵</div>
-                                <div class="text-sm font-mono">{{ file.split('.')[0] }}</div>
+                        <div class="space-y-2">
+                            <div v-for="file in sortedFiles" :key="file" 
+                                 :class="[
+                                     'flex items-center p-4 rounded-xl font-bold border-2 transition-all duration-300',
+                                     isFilePlayed(file) && playOnceMode ? 
+                                         'bg-gray-200 text-gray-600 border-gray-300 opacity-75' : 
+                                         'file-grid-item text-orange-800 border-orange-200'
+                                 ]">
+                                
+                                <!-- 播放狀態圖示 -->
+                                <div class="text-2xl mr-4 min-w-8">
+                                    <span v-if="isFilePlayed(file) && playOnceMode">✅</span>
+                                    <span v-else>🎵</span>
+                                </div>
+                                
+                                <!-- 檔案資訊 -->
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="text-lg font-mono">{{ file.split('.')[0] }}.wav</div>
+                                        <div class="text-sm text-gray-600">
+                                            MQTT指令: <code class="bg-orange-100 px-2 py-1 rounded text-orange-800">play{{ file.split('.')[0] }}</code>
+                                        </div>
+                                        <div v-if="playOnceMode" class="text-sm font-semibold">
+                                            <span v-if="isFilePlayed(file)" class="text-red-500">已播放</span>
+                                            <span v-else class="text-green-600">可播放</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 重置按鈕 -->
+                                <button
+                                    v-if="isFilePlayed(file) && playOnceMode"
+                                    @click="resetSingleFile(file)"
+                                    class="ml-4 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded
+                                           transition-colors duration-200 flex items-center space-x-2">
+                                    <i class="fas fa-redo"></i>
+                                    <span>重置</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -245,6 +317,29 @@
                                 魔法城堡: <code class="bg-purple-200 px-2 py-1 rounded text-sm">broker.MQTTGO.io:1883</code>
                             </li>
                         </ul>
+                        
+                        <!-- 測試區域 -->
+                        <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 class="font-semibold text-blue-800 mb-2">🧪 測試播放功能:</h4>
+                            <div class="flex items-center space-x-2">
+                                <input 
+                                    type="number" 
+                                    v-model="testFileNumber"
+                                    min="1" 
+                                    max="120" 
+                                    placeholder="輸入檔案編號 (1-120)"
+                                    class="px-3 py-1 border border-blue-300 rounded text-sm">
+                                <button 
+                                    @click="simulateMqttPlay(testFileNumber)"
+                                    class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded
+                                           transition-colors duration-200">
+                                    🎵 模擬播放
+                                </button>
+                            </div>
+                            <p class="text-xs text-blue-600 mt-2">
+                                此功能用於測試「只播放一次」模式，實際播放透過 MQTT 指令控制
+                            </p>
+                        </div>
                     </div>
                 </div>
                 
@@ -279,6 +374,9 @@
                     selectedFiles: [],
                     loading: false,
                     uploading: false,
+                    playOnceMode: false,
+                    playedFiles: [], // 已播放的檔案列表
+                    testFileNumber: 1, // 測試用檔案編號
                     notification: {
                         show: false,
                         type: 'success',
@@ -289,6 +387,27 @@
             
             mounted() {
                 this.loadFiles();
+                this.loadPlayedFilesFromStorage();
+                this.startPlayStatusCheck();
+                this.startPollingPlayedFiles();
+            },
+            
+            computed: {
+                // 排序檔案：從001開始遞增
+                sortedFiles() {
+                    return this.files.sort((a, b) => {
+                        const numA = parseInt(a.split('.')[0]);
+                        const numB = parseInt(b.split('.')[0]);
+                        return numA - numB;
+                    });
+                }
+            },
+            
+            watch: {
+                // 監控播放模式變化，同步到後端
+                playOnceMode(newValue) {
+                    this.updatePlayMode(newValue);
+                }
             },
             
             methods: {
@@ -345,6 +464,155 @@
                 async refreshFiles() {
                     await this.loadFiles();
                     this.showNotification('success', '檔案列表已更新！');
+                },
+                
+                // 檢查檔案是否已播放
+                isFilePlayed(filename) {
+                    return this.playedFiles.includes(filename);
+                },
+                
+                // 取得檔案提示文字
+                getFileTooltip(filename) {
+                    const fileNumber = filename.split('.')[0];
+                    const status = this.isFilePlayed(filename) && this.playOnceMode ? ' (已播放)' : '';
+                    return `檔案: ${filename} | MQTT指令: play${fileNumber}${status}`;
+                },
+                
+                // 重置單個檔案
+                async resetSingleFile(filename) {
+                    try {
+                        const response = await fetch('/api/reset-played', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ filename: filename })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            const index = this.playedFiles.indexOf(filename);
+                            if (index > -1) {
+                                this.playedFiles.splice(index, 1);
+                            }
+                            this.showNotification('success', `🎵 ${filename} 已重置，可重新播放！`);
+                        } else {
+                            this.showNotification('error', data.message);
+                        }
+                    } catch (error) {
+                        this.showNotification('error', '重置失敗: ' + error.message);
+                    }
+                },
+                
+                // 重置全部檔案
+                async resetAllPlayedFiles() {
+                    try {
+                        const response = await fetch('/api/reset-played', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({}) // 空物件表示重置全部
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            this.playedFiles = [];
+                            this.showNotification('success', '🎉 所有檔案已重置，可重新播放！');
+                        } else {
+                            this.showNotification('error', data.message);
+                        }
+                    } catch (error) {
+                        this.showNotification('error', '重置失敗: ' + error.message);
+                    }
+                },
+                
+                // 標記檔案為已播放
+                markFileAsPlayed(filename) {
+                    if (this.playOnceMode && !this.isFilePlayed(filename)) {
+                        this.playedFiles.push(filename);
+                        this.savePlayedFilesToStorage();
+                    }
+                },
+                
+                // 儲存已播放檔案到本地儲存
+                savePlayedFilesToStorage() {
+                    localStorage.setItem('playedFiles', JSON.stringify(this.playedFiles));
+                },
+                
+                // 從本地儲存載入已播放檔案
+                loadPlayedFilesFromStorage() {
+                    const saved = localStorage.getItem('playedFiles');
+                    if (saved) {
+                        this.playedFiles = JSON.parse(saved);
+                    }
+                },
+                
+                // 更新播放模式到後端
+                async updatePlayMode(playOnceMode) {
+                    try {
+                        const response = await fetch('/api/play-mode', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ playOnceMode: playOnceMode })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            console.log('播放模式已同步到後端:', data.message);
+                            if (!playOnceMode) {
+                                this.playedFiles = []; // 關閉模式時清空已播放列表
+                            }
+                        }
+                    } catch (error) {
+                        console.error('同步播放模式失敗:', error);
+                    }
+                },
+                
+                // 開始輪詢已播放檔案狀態
+                startPollingPlayedFiles() {
+                    // 每2秒檢查一次已播放檔案狀態
+                    setInterval(async () => {
+                        if (this.playOnceMode) {
+                            await this.loadPlayedFilesFromServer();
+                        }
+                    }, 2000);
+                },
+                
+                // 從伺服器載入已播放檔案
+                async loadPlayedFilesFromServer() {
+                    try {
+                        const response = await fetch('/api/played-files');
+                        const data = await response.json();
+                        this.playedFiles = data.playedFiles || [];
+                    } catch (error) {
+                        console.error('載入已播放檔案失敗:', error);
+                    }
+                },
+                
+                // 開始檢查播放狀態 (模擬 MQTT 播放通知)
+                startPlayStatusCheck() {
+                    console.log('播放狀態檢查已啟動');
+                },
+                
+                // 模擬接收到 MQTT 播放指令
+                simulateMqttPlay(fileNumber) {
+                    const filename = `${fileNumber.padStart(3, '0')}.wav`;
+                    if (this.files.includes(filename)) {
+                        if (this.playOnceMode && this.isFilePlayed(filename)) {
+                            this.showNotification('error', `⚠️ 檔案 ${filename} 已經播放過了！`);
+                            return false;
+                        } else {
+                            this.markFileAsPlayed(filename);
+                            this.showNotification('success', `🎵 正在播放 ${filename}...`);
+                            return true;
+                        }
+                    } else {
+                        this.showNotification('error', `❌ 檔案 ${filename} 不存在！`);
+                        return false;
+                    }
                 },
                 
                 showNotification(type, message) {

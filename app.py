@@ -18,6 +18,10 @@ ALLOWED_EXTENSIONS = {'wav'}
 # 建立一個執行緒安全的佇列，用於存放待播的音檔路徑
 playback_queue = queue.Queue()
 
+# 播放狀態管理
+played_files = set()  # 存儲已播放的檔案
+play_once_mode = False  # 是否啟用只播放一次模式
+
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
 CORS(app)  # 啟用 CORS 支援 Vue.js 前端
@@ -54,8 +58,16 @@ def audio_player_worker():
     while True:
         try:
             # queue.get() 是阻塞操作，如果佇列是空的，它會在這裡等待
-            audio_file_path = playback_queue.get()
-            print(f"正在播放: {os.path.basename(audio_file_path)}")
+            audio_data = playback_queue.get()
+            
+            # 處理新格式：(file_path, filename) 或舊格式：file_path
+            if isinstance(audio_data, tuple):
+                audio_file_path, filename = audio_data
+            else:
+                audio_file_path = audio_data
+                filename = os.path.basename(audio_file_path)
+            
+            print(f"正在播放: {filename}")
             
             # 使用pygame播放音檔
             pygame.mixer.music.load(audio_file_path)
@@ -65,7 +77,13 @@ def audio_player_worker():
             while pygame.mixer.music.get_busy():
                 time.sleep(0.1)
             
-            print(f"播放完畢: {os.path.basename(audio_file_path)}")
+            print(f"播放完畢: {filename}")
+            
+            # 如果是只播放一次模式，標記為已播放
+            if play_once_mode:
+                played_files.add(filename)
+                print(f"標記 {filename} 為已播放")
+            
             # 標示任務完成
             playback_queue.task_done()
         except Exception as e:
@@ -100,8 +118,13 @@ def on_message(client, userdata, msg):
 
                 # 檢查檔案是否存在
                 if os.path.exists(file_path):
+                    # 檢查只播放一次模式
+                    if play_once_mode and filename in played_files:
+                        print(f"跳過播放: {filename} (已播放過，只播放一次模式)")
+                        return
+                    
                     # 將待播的音檔路徑放入佇列
-                    playback_queue.put(file_path)
+                    playback_queue.put((file_path, filename))  # 同時傳遞路徑和檔名
                     print(f"已將 {filename} 加入播放佇列。目前佇列大小: {playback_queue.qsize()}")
                 else:
                     print(f"警告: 找不到音檔 {filename}")
@@ -181,6 +204,61 @@ def api_upload_files():
             'success': False, 
             'message': '沒有選擇任何有效的 .wav 檔案。'
         }), 400
+
+@app.route('/api/play-mode', methods=['POST'])
+def api_set_play_mode():
+    """設定播放模式"""
+    global play_once_mode, played_files
+    
+    data = request.get_json()
+    play_once_mode = data.get('playOnceMode', False)
+    
+    # 如果關閉只播放一次模式，清空已播放列表
+    if not play_once_mode:
+        played_files.clear()
+    
+    return jsonify({
+        'success': True,
+        'playOnceMode': play_once_mode,
+        'message': f'播放模式已設定為: {"只播放一次" if play_once_mode else "可重複播放"}'
+    })
+
+@app.route('/api/played-files', methods=['GET'])
+def api_get_played_files():
+    """取得已播放檔案列表"""
+    return jsonify({
+        'playedFiles': list(played_files),
+        'playOnceMode': play_once_mode
+    })
+
+@app.route('/api/reset-played', methods=['POST'])
+def api_reset_played():
+    """重置已播放檔案"""
+    global played_files
+    
+    data = request.get_json()
+    filename = data.get('filename')
+    
+    if filename:
+        # 重置單個檔案
+        if filename in played_files:
+            played_files.remove(filename)
+            return jsonify({
+                'success': True,
+                'message': f'檔案 {filename} 已重置'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'檔案 {filename} 尚未播放'
+            })
+    else:
+        # 重置全部檔案
+        played_files.clear()
+        return jsonify({
+            'success': True,
+            'message': '所有檔案已重置'
+        })
 
 
 # --- 主程式進入點 ---
