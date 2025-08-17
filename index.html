@@ -350,6 +350,102 @@
                 </div>
             </div>
 
+            <!-- 即時日誌區域 -->
+            <div class="magic-card p-6 rounded-2xl mb-8">
+                <div 
+                    @click="toggleLogPanel" 
+                    class="flex items-center justify-between cursor-pointer mb-4 hover:bg-orange-50 p-2 rounded-lg transition-colors duration-200">
+                    <h2 class="text-2xl font-bold text-orange-800 flex items-center">
+                        <i class="fas fa-scroll mr-3 text-orange-600"></i>
+                        📜 魔法播放日誌
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <!-- 即時狀態指示器 -->
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse" v-if="isConnected"></div>
+                            <div class="w-3 h-3 bg-red-500 rounded-full" v-else></div>
+                            <span class="text-sm text-gray-600">{{ isConnected ? '已連接' : '未連接' }}</span>
+                        </div>
+                        <!-- 展開/收合按鈕 -->
+                        <i :class="showLogPanel ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" 
+                           class="text-xl text-orange-600 transition-transform duration-300"></i>
+                    </div>
+                </div>
+                
+                <!-- 日誌內容區域 -->
+                <div v-show="showLogPanel" class="transition-all duration-500 ease-in-out">
+                    <!-- 當前狀態摘要 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <!-- 目前播放 -->
+                        <div class="bg-gradient-to-r from-green-100 to-green-200 p-4 rounded-lg border-2 border-green-300">
+                            <h3 class="font-bold text-green-800 mb-2 flex items-center">
+                                <i class="fas fa-play mr-2"></i>
+                                🎵 目前播放
+                            </h3>
+                            <div v-if="currentPlaying" class="text-green-700">
+                                <div class="font-mono text-lg">{{ currentPlaying }}</div>
+                                <div class="text-sm">{{ playingStartTime }}</div>
+                            </div>
+                            <div v-else class="text-green-600 italic">無音檔播放中</div>
+                        </div>
+                        
+                        <!-- 佇列等待 -->
+                        <div class="bg-gradient-to-r from-yellow-100 to-yellow-200 p-4 rounded-lg border-2 border-yellow-300">
+                            <h3 class="font-bold text-yellow-800 mb-2 flex items-center">
+                                <i class="fas fa-clock mr-2"></i>
+                                ⏳ 佇列等待
+                            </h3>
+                            <div v-if="playQueue.length > 0">
+                                <div class="text-yellow-700 font-mono">
+                                    {{ playQueue.length }} 個檔案
+                                </div>
+                                <div class="text-sm text-yellow-600">
+                                    下一個: {{ playQueue[0] || 'N/A' }}
+                                </div>
+                            </div>
+                            <div v-else class="text-yellow-600 italic">佇列為空</div>
+                        </div>
+                        
+                        <!-- MQTT 狀態 -->
+                        <div class="bg-gradient-to-r from-blue-100 to-blue-200 p-4 rounded-lg border-2 border-blue-300">
+                            <h3 class="font-bold text-blue-800 mb-2 flex items-center">
+                                <i class="fas fa-satellite-dish mr-2"></i>
+                                📡 MQTT 狀態
+                            </h3>
+                            <div class="text-blue-700">
+                                <div>主題: <code class="bg-blue-200 px-1 rounded text-xs">puffin-test</code></div>
+                                <div class="text-sm">最後指令: {{ lastMqttCommand || '無' }}</div>
+                                <div class="text-sm">{{ lastMqttTime }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 詳細日誌 -->
+                    <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-80 overflow-y-auto">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-green-300">🖥️ 系統日誌</h3>
+                            <button 
+                                @click="clearLogs"
+                                class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors duration-200">
+                                清除日誌
+                            </button>
+                        </div>
+                        <div class="space-y-1">
+                            <div v-for="(log, index) in logs" :key="index" 
+                                 :class="getLogClass(log.type)"
+                                 class="flex items-start space-x-2">
+                                <span class="text-gray-500 text-xs min-w-16">{{ log.time }}</span>
+                                <span class="min-w-12">{{ getLogIcon(log.type) }}</span>
+                                <span class="flex-1">{{ log.message }}</span>
+                            </div>
+                        </div>
+                        <div v-if="logs.length === 0" class="text-gray-500 italic text-center py-4">
+                            暫無日誌記錄...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 頁腳 -->
             <footer class="text-center mt-12">
                 <div class="magic-card p-4 rounded-xl inline-block">
@@ -377,6 +473,15 @@
                     playOnceMode: false,
                     playedFiles: [], // 已播放的檔案列表
                     testFileNumber: 1, // 測試用檔案編號
+                    // Log 相關數據
+                    showLogPanel: false, // 是否顯示 Log 面板
+                    isConnected: false, // MQTT 連接狀態
+                    currentPlaying: null, // 目前播放的檔案
+                    playingStartTime: '', // 播放開始時間
+                    playQueue: [], // 播放佇列
+                    lastMqttCommand: '', // 最後的 MQTT 指令
+                    lastMqttTime: '', // 最後 MQTT 指令時間
+                    logs: [], // 詳細日誌
                     notification: {
                         show: false,
                         type: 'success',
@@ -390,6 +495,7 @@
                 this.loadPlayedFilesFromStorage();
                 this.startPlayStatusCheck();
                 this.startPollingPlayedFiles();
+                this.initializeLogSystem();
             },
             
             computed: {
@@ -625,6 +731,169 @@
                     setTimeout(() => {
                         this.notification.show = false;
                     }, 5000);
+                },
+                
+                // Log 面板相關方法
+                toggleLogPanel() {
+                    this.showLogPanel = !this.showLogPanel;
+                },
+                
+                // 添加日誌
+                addLog(type, message) {
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('zh-TW', { 
+                        hour12: false, 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit' 
+                    });
+                    
+                    this.logs.unshift({
+                        type: type,
+                        time: time,
+                        message: message,
+                        timestamp: now.getTime()
+                    });
+                    
+                    // 限制日誌數量，保留最新的100條
+                    if (this.logs.length > 100) {
+                        this.logs = this.logs.slice(0, 100);
+                    }
+                },
+                
+                // 取得日誌樣式類別
+                getLogClass(type) {
+                    switch (type) {
+                        case 'mqtt': return 'text-blue-400';
+                        case 'play': return 'text-green-400';
+                        case 'queue': return 'text-yellow-400';
+                        case 'error': return 'text-red-400';
+                        case 'info': return 'text-gray-400';
+                        default: return 'text-green-400';
+                    }
+                },
+                
+                // 取得日誌圖示
+                getLogIcon(type) {
+                    switch (type) {
+                        case 'mqtt': return '📡';
+                        case 'play': return '🎵';
+                        case 'queue': return '⏳';
+                        case 'error': return '❌';
+                        case 'info': return 'ℹ️';
+                        default: return '📝';
+                    }
+                },
+                
+                // 清除日誌
+                clearLogs() {
+                    this.logs = [];
+                    this.addLog('info', '日誌已清除');
+                },
+                
+                // 格式化時間
+                formatTime(date) {
+                    return date.toLocaleTimeString('zh-TW', { 
+                        hour12: false, 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit' 
+                    });
+                },
+                
+                // 初始化日誌系統
+                initializeLogSystem() {
+                    this.addLog('info', '魔法音樂學院啟動');
+                    this.addLog('info', '正在連接 MQTT Broker...');
+                    
+                    // 模擬連接狀態（實際應該從後端獲取）
+                    setTimeout(() => {
+                        this.isConnected = true;
+                        this.addLog('mqtt', '已連接到 MQTT Broker: broker.MQTTGO.io:1883');
+                        this.addLog('mqtt', '已訂閱主題: puffin-test');
+                    }, 2000);
+                    
+                    // 定期更新狀態
+                    this.startStatusPolling();
+                },
+                
+                // 開始狀態輪詢
+                startStatusPolling() {
+                    setInterval(async () => {
+                        await this.updatePlaybackStatus();
+                    }, 1000); // 每秒更新一次
+                },
+                
+                // 更新播放狀態
+                async updatePlaybackStatus() {
+                    try {
+                        const response = await fetch('/api/status');
+                        const data = await response.json();
+                        
+                        // 更新狀態
+                        this.currentPlaying = data.currentPlaying;
+                        this.playingStartTime = data.playingStartTime ? `開始時間: ${data.playingStartTime}` : '';
+                        this.playQueue = data.playQueue || [];
+                        this.lastMqttCommand = data.lastMqttCommand;
+                        this.lastMqttTime = data.lastMqttTime ? `時間: ${data.lastMqttTime}` : '';
+                        this.isConnected = data.isConnected;
+                        
+                        // 處理 MQTT 日誌
+                        if (data.mqttLogs && data.mqttLogs.length > 0) {
+                            data.mqttLogs.forEach(log => {
+                                const logMessage = this.formatMqttLog(log);
+                                if (logMessage && !this.logs.find(l => l.timestamp === log.timestamp * 1000)) {
+                                    this.addLogFromServer('mqtt', logMessage, log.timestamp * 1000);
+                                }
+                            });
+                        }
+                        
+                    } catch (error) {
+                        console.error('更新播放狀態失敗:', error);
+                        this.isConnected = false;
+                    }
+                },
+                
+                // 格式化 MQTT 日誌
+                formatMqttLog(log) {
+                    switch (log.status) {
+                        case 'received':
+                            return `收到 MQTT 指令: ${log.command}`;
+                        case 'queued':
+                            return `指令 ${log.command} 已加入播放佇列`;
+                        case 'skipped':
+                            return `跳過 ${log.command} (已播放過)`;
+                        case 'file_not_found':
+                            return `錯誤: 找不到檔案 ${log.command}`;
+                        case 'invalid_command':
+                            return `錯誤: 無效指令 ${log.command}`;
+                        case 'error':
+                            return `錯誤: ${log.error}`;
+                        default:
+                            return `MQTT: ${log.command}`;
+                    }
+                },
+                
+                // 從伺服器添加日誌（避免重複）
+                addLogFromServer(type, message, timestamp) {
+                    const time = new Date(timestamp).toLocaleTimeString('zh-TW', { 
+                        hour12: false, 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit' 
+                    });
+                    
+                    this.logs.unshift({
+                        type: type,
+                        time: time,
+                        message: message,
+                        timestamp: timestamp
+                    });
+                    
+                    // 限制日誌數量
+                    if (this.logs.length > 100) {
+                        this.logs = this.logs.slice(0, 100);
+                    }
                 }
             }
         }).mount('#app');

@@ -22,6 +22,14 @@ playback_queue = queue.Queue()
 played_files = set()  # 存儲已播放的檔案
 play_once_mode = False  # 是否啟用只播放一次模式
 
+# 即時狀態管理
+current_playing = None  # 目前播放的檔案
+playing_start_time = None  # 播放開始時間
+play_queue_list = []  # 播放佇列（用於前端顯示）
+mqtt_logs = []  # MQTT 日誌
+last_mqtt_command = None  # 最後的 MQTT 指令
+last_mqtt_time = None  # 最後 MQTT 指令時間
+
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
 CORS(app)  # 啟用 CORS 支援 Vue.js 前端
@@ -69,6 +77,15 @@ def audio_player_worker():
             
             print(f"正在播放: {filename}")
             
+            # 更新播放狀態
+            global current_playing, playing_start_time, play_queue_list
+            current_playing = filename
+            playing_start_time = time.time()
+            
+            # 從佇列列表中移除正在播放的檔案
+            if filename in play_queue_list:
+                play_queue_list.remove(filename)
+            
             # 使用pygame播放音檔
             pygame.mixer.music.load(audio_file_path)
             pygame.mixer.music.play()
@@ -78,6 +95,10 @@ def audio_player_worker():
                 time.sleep(0.1)
             
             print(f"播放完畢: {filename}")
+            
+            # 清除播放狀態
+            current_playing = None
+            playing_start_time = None
             
             # 如果是只播放一次模式，標記為已播放
             if play_once_mode:
@@ -108,6 +129,23 @@ def on_message(client, userdata, msg):
     try:
         payload = msg.payload.decode('utf-8')
         print(f"收到訊息 - 主題: {msg.topic}, 內容: {payload}")
+        
+        # 記錄 MQTT 日誌
+        global last_mqtt_command, last_mqtt_time, mqtt_logs
+        last_mqtt_command = payload
+        last_mqtt_time = time.time()
+        
+        # 添加到 MQTT 日誌
+        mqtt_logs.append({
+            'timestamp': time.time(),
+            'topic': msg.topic,
+            'command': payload,
+            'status': 'received'
+        })
+        
+        # 限制日誌數量
+        if len(mqtt_logs) > 50:
+            mqtt_logs = mqtt_logs[-50:]
 
         # 解析訊息，例如 "play001" -> "001"
         if payload.startswith("play"):
@@ -121,18 +159,33 @@ def on_message(client, userdata, msg):
                     # 檢查只播放一次模式
                     if play_once_mode and filename in played_files:
                         print(f"跳過播放: {filename} (已播放過，只播放一次模式)")
+                        # 記錄跳過狀態
+                        mqtt_logs[-1]['status'] = 'skipped'
+                        mqtt_logs[-1]['reason'] = 'already_played'
                         return
                     
                     # 將待播的音檔路徑放入佇列
                     playback_queue.put((file_path, filename))  # 同時傳遞路徑和檔名
                     print(f"已將 {filename} 加入播放佇列。目前佇列大小: {playback_queue.qsize()}")
+                    
+                    # 更新佇列列表
+                    global play_queue_list
+                    play_queue_list.append(filename)
+                    
+                    # 記錄成功狀態
+                    mqtt_logs[-1]['status'] = 'queued'
                 else:
                     print(f"警告: 找不到音檔 {filename}")
+                    mqtt_logs[-1]['status'] = 'file_not_found'
             else:
                 print(f"警告: 無法解析的指令 {payload}")
+                mqtt_logs[-1]['status'] = 'invalid_command'
 
     except Exception as e:
         print(f"處理訊息時發生錯誤: {e}")
+        if mqtt_logs:
+            mqtt_logs[-1]['status'] = 'error'
+            mqtt_logs[-1]['error'] = str(e)
 
 
 def setup_mqtt_client():
@@ -259,6 +312,38 @@ def api_reset_played():
             'success': True,
             'message': '所有檔案已重置'
         })
+
+@app.route('/api/status', methods=['GET'])
+def api_get_status():
+    """取得即時播放狀態"""
+    global current_playing, playing_start_time, play_queue_list, last_mqtt_command, last_mqtt_time, mqtt_logs
+    
+    # 更新佇列狀態（移除已播放的）
+    if current_playing and current_playing in play_queue_list:
+        play_queue_list.remove(current_playing)
+    
+    # 格式化播放開始時間
+    playing_start_formatted = None
+    if playing_start_time:
+        from datetime import datetime
+        playing_start_formatted = datetime.fromtimestamp(playing_start_time).strftime('%H:%M:%S')
+    
+    # 格式化最後 MQTT 時間
+    last_mqtt_formatted = None
+    if last_mqtt_time:
+        from datetime import datetime
+        last_mqtt_formatted = datetime.fromtimestamp(last_mqtt_time).strftime('%H:%M:%S')
+    
+    return jsonify({
+        'currentPlaying': current_playing,
+        'playingStartTime': playing_start_formatted,
+        'playQueue': play_queue_list.copy(),
+        'queueSize': playback_queue.qsize(),
+        'lastMqttCommand': last_mqtt_command,
+        'lastMqttTime': last_mqtt_formatted,
+        'mqttLogs': mqtt_logs[-10:],  # 最近10條日誌
+        'isConnected': True  # 簡化版，實際應該檢查 MQTT 連接狀態
+    })
 
 
 # --- 主程式進入點 ---
