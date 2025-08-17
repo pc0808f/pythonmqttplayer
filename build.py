@@ -51,7 +51,7 @@ def build_executable():
         "pyinstaller",
         "--onefile",  # 打包成单个文件
         "--windowed",  # Windows下不显示控制台窗口 (可选)
-        "--add-data", "templates;templates",  # 包含模板文件夹
+        "--add-data", "index.html;.",  # 包含前端HTML檔案
         "--hidden-import", "pygame",  # 确保pygame被包含
         "--hidden-import", "paho.mqtt.client",  # 确保paho-mqtt被包含
         "--name", "PythonMQTTPlayer",  # 设置可执行文件名称
@@ -75,12 +75,12 @@ def build_executable():
         files = os.listdir(dist_dir)
         print(f"Generated files: {files}")
         
-        # 复制模板文件夹到dist目录（如果需要）
-        templates_src = os.path.join(script_dir, "templates")
-        templates_dst = os.path.join(dist_dir, "templates")
-        if os.path.exists(templates_src) and not os.path.exists(templates_dst):
-            shutil.copytree(templates_src, templates_dst)
-            print("Copied templates folder to dist directory")
+        # 複製 uploads 資料夾到 dist 目錄（如果需要）
+        uploads_src = os.path.join(script_dir, "uploads")
+        uploads_dst = os.path.join(dist_dir, "uploads")
+        if os.path.exists(uploads_src) and not os.path.exists(uploads_dst):
+            shutil.copytree(uploads_src, uploads_dst)
+            print("Copied uploads folder to dist directory")
     
     print("Build completed!")
     print(f"Executable location: {os.path.join(script_dir, 'dist')}")
