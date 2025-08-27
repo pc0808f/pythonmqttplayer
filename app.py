@@ -1,4 +1,5 @@
 import os
+import sys
 import socket
 import threading
 import queue
@@ -11,9 +12,24 @@ import pygame
 from pydub import AudioSegment
 import io
 
+def get_resource_path(relative_path):
+    """取得資源檔案的正確路徑，支援 PyInstaller 打包後的執行環境"""
+    try:
+        # PyInstaller 在打包後會將資源解壓到臨時資料夾
+        base_path = sys._MEIPASS
+        print(f"PyInstaller 模式，資源基礎路徑: {base_path}")
+    except AttributeError:
+        # 開發模式或未打包狀態
+        base_path = os.path.abspath(".")
+        print(f"開發模式，資源基礎路徑: {base_path}")
+    
+    full_path = os.path.join(base_path, relative_path)
+    print(f"資源路徑轉換: {relative_path} -> {full_path}")
+    return full_path
+
 # --- 全域設定 ---
 # 存放上傳檔案的資料夾
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = get_resource_path('uploads')
 # 允許的檔案擴展名
 ALLOWED_EXTENSIONS = {'wav', 'm4a'}
 
@@ -348,7 +364,13 @@ def setup_mqtt_client():
 @app.route('/')
 def vue_app():
     """Vue.js 魔法音樂學院前端頁面 (主頁面)"""
-    return send_from_directory('.', 'index.html')
+    try:
+        # 使用 get_resource_path 獲取 index.html 的正確路徑
+        base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath(".")
+        return send_from_directory(base_path, 'index.html')
+    except Exception as e:
+        print(f"載入首頁時發生錯誤: {e}")
+        return f"<h1>魔法音樂學院</h1><p>載入首頁時發生錯誤: {e}</p><p>請確認 index.html 檔案存在。</p>", 500
 
 # --- API 路由 (供 Vue.js 前端使用) ---
 @app.route('/api/files', methods=['GET'])
@@ -515,22 +537,45 @@ def api_get_status():
 
 # --- 主程式進入點 ---
 if __name__ == '__main__':
-    # 確保 uploads 資料夾存在
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
-        print(f"已建立資料夾: {UPLOAD_FOLDER}")
+    print(f"啟動魔法音樂學院...")
+    print(f"音效檔基礎路徑: {UPLOAD_FOLDER}")
     
-    # 確保 name 和 family 子資料夾存在
-    name_folder = os.path.join(UPLOAD_FOLDER, 'name')
-    family_folder = os.path.join(UPLOAD_FOLDER, 'family')
-    
-    if not os.path.exists(name_folder):
-        os.makedirs(name_folder)
-        print(f"已建立資料夾: {name_folder}")
-    
-    if not os.path.exists(family_folder):
-        os.makedirs(family_folder)
-        print(f"已建立資料夾: {family_folder}")
+    # 檢查是否在 PyInstaller 環境中
+    if hasattr(sys, '_MEIPASS'):
+        print("在 PyInstaller 打包環境中執行，音效檔已內嵌")
+        # 確認內嵌的音效檔案是否存在
+        name_folder = os.path.join(UPLOAD_FOLDER, 'name')
+        family_folder = os.path.join(UPLOAD_FOLDER, 'family')
+        
+        if os.path.exists(name_folder):
+            name_files = [f for f in os.listdir(name_folder) if f.endswith('.wav')]
+            print(f"發現 {len(name_files)} 個內嵌的 name 音效檔")
+        else:
+            print(f"警告: 找不到內嵌的 name 資料夾: {name_folder}")
+            
+        if os.path.exists(family_folder):
+            family_files = [f for f in os.listdir(family_folder) if f.endswith('.wav')]
+            print(f"發現 {len(family_files)} 個內嵌的 family 音效檔")
+        else:
+            print(f"警告: 找不到內嵌的 family 資料夾: {family_folder}")
+    else:
+        print("在開發環境中執行，檢查並建立必要的資料夾...")
+        # 確保 uploads 資料夾存在
+        if not os.path.exists(UPLOAD_FOLDER):
+            os.makedirs(UPLOAD_FOLDER)
+            print(f"已建立資料夾: {UPLOAD_FOLDER}")
+        
+        # 確保 name 和 family 子資料夾存在
+        name_folder = os.path.join(UPLOAD_FOLDER, 'name')
+        family_folder = os.path.join(UPLOAD_FOLDER, 'family')
+        
+        if not os.path.exists(name_folder):
+            os.makedirs(name_folder)
+            print(f"已建立資料夾: {name_folder}")
+            
+        if not os.path.exists(family_folder):
+            os.makedirs(family_folder)
+            print(f"已建立資料夾: {family_folder}")
 
     # 1. 啟動音檔播放工作執行緒
     player_thread = threading.Thread(target=audio_player_worker, daemon=True)
