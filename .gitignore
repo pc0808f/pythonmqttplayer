@@ -74,6 +74,10 @@ uploads/*.wav
 uploads/*.mp3
 uploads/*.mp4
 
+# 排除特定音效目錄（不上傳到 GitHub）
+uploads/name/
+uploads/family/
+
 # Log files
 *.log
 

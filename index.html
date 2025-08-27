@@ -186,14 +186,14 @@
                 <div class="space-y-6">
                     <div>
                         <label for="file-upload" class="block text-lg font-semibold text-orange-700 mb-3">
-                            🎵 選擇魔法音檔 (可多選，僅限 .wav 格式):
+                            🎵 選擇魔法音檔 (可多選，僅限 .m4a 格式):
                         </label>
                         <input
                             type="file"
                             ref="fileInput"
                             @change="handleFileSelect"
                             multiple
-                            accept=".wav"
+                            accept=".m4a"
                             class="block w-full text-lg text-orange-700 
                                    file:mr-4 file:py-3 file:px-6 file:rounded-full 
                                    file:border-0 file:text-lg file:font-semibold 
@@ -231,7 +231,7 @@
             <div class="magic-card p-6 sm:p-8 rounded-2xl">
                 <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-orange-800 flex items-center">
                     <i class="fas fa-list mr-3 text-orange-600"></i>
-                    📚 魔法音樂圖書館 (支援001-120.wav)
+                    📚 魔法音樂圖書館 (Name: 001-100.m4a)
                 </h2>
                 
                 <div v-if="files.length > 0">
@@ -269,9 +269,9 @@
                                 <!-- 檔案資訊 -->
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-4">
-                                        <div class="text-lg font-mono">{{ file.split('.')[0] }}.wav</div>
+                                        <div class="text-lg font-mono">{{ file }}</div>
                                         <div class="text-sm text-gray-600">
-                                            MQTT指令: <code class="bg-orange-100 px-2 py-1 rounded text-orange-800">play{{ file.split('.')[0] }}</code>
+                                            MQTT指令: <code class="bg-orange-100 px-2 py-1 rounded text-orange-800">{{ file.split('.')[0] }},01</code> (name,family)
                                         </div>
                                         <div v-if="playOnceMode" class="text-sm font-semibold">
                                             <span v-if="isFilePlayed(file)" class="text-red-500">已播放</span>
@@ -302,11 +302,11 @@
                         <ul class="space-y-2 text-purple-700">
                             <li class="flex items-start">
                                 <span class="mr-2">🔮</span>
-                                上傳 001.wav 到 120.wav 格式的魔法音檔
+                                上傳 001.m4a 到 100.m4a 格式的魔法音檔到 name 目錄
                             </li>
                             <li class="flex items-start">
                                 <span class="mr-2">⚡</span>
-                                使用 MQTT 發送 "play001" 到 "play120" 咒語播放對應音檔
+                                使用 MQTT 發送 "name,family" 咒語，例如 "001,01"
                             </li>
                             <li class="flex items-start">
                                 <span class="mr-2">🌐</span>
@@ -522,7 +522,8 @@
                     try {
                         const response = await fetch('/api/files');
                         const data = await response.json();
-                        this.files = data.files;
+                        // 顯示 name 目錄下的 m4a 檔案
+                        this.files = data.detailed ? data.detailed.name : [];
                     } catch (error) {
                         this.showNotification('error', '無法載入檔案列表: ' + error.message);
                     } finally {
@@ -543,6 +544,8 @@
                     this.selectedFiles.forEach(file => {
                         formData.append('files[]', file);
                     });
+                    // 指定上傳到 name 目錄
+                    formData.append('folder', 'name');
                     
                     try {
                         const response = await fetch('/api/upload', {
