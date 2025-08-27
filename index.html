@@ -231,7 +231,7 @@
             <div class="magic-card p-6 sm:p-8 rounded-2xl">
                 <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-orange-800 flex items-center">
                     <i class="fas fa-list mr-3 text-orange-600"></i>
-                    📚 魔法音樂圖書館 (Name: 001-100.m4a)
+                    📚 魔法音樂圖書館
                 </h2>
                 
                 <div v-if="files.length > 0">
@@ -270,9 +270,6 @@
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-4">
                                         <div class="text-lg font-mono">{{ file }}</div>
-                                        <div class="text-sm text-gray-600">
-                                            MQTT指令: <code class="bg-orange-100 px-2 py-1 rounded text-orange-800">{{ file.split('.')[0] }},01</code> (name,family)
-                                        </div>
                                         <div v-if="playOnceMode" class="text-sm font-semibold">
                                             <span v-if="isFilePlayed(file)" class="text-red-500">已播放</span>
                                             <span v-else class="text-green-600">可播放</span>
@@ -575,9 +572,10 @@
                     this.showNotification('success', '檔案列表已更新！');
                 },
                 
-                // 檢查檔案是否已播放
+                // 檢查檔案是否已播放（基於 name 判斷）
                 isFilePlayed(filename) {
-                    return this.playedFiles.includes(filename);
+                    const name = filename.split('.')[0]; // 取得檔名的 name 部分 (如 "001")
+                    return this.playedFiles.includes(name);
                 },
                 
                 // 取得檔案提示文字
@@ -589,18 +587,19 @@
                 
                 // 重置單個檔案
                 async resetSingleFile(filename) {
+                    const name = filename.split('.')[0]; // 取得 name 部分
                     try {
                         const response = await fetch('/api/reset-played', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ filename: filename })
+                            body: JSON.stringify({ filename: name }) // 使用 name 部分重置
                         });
                         
                         const data = await response.json();
                         if (data.success) {
-                            const index = this.playedFiles.indexOf(filename);
+                            const index = this.playedFiles.indexOf(name);
                             if (index > -1) {
                                 this.playedFiles.splice(index, 1);
                             }

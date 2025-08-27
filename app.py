@@ -61,15 +61,23 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_ip_address():
-    """取得本機的 IP 位址作為 MQTT Client ID"""
+    """取得本機的 IP 位址作為 MQTT Client ID，加入隨機數字避免衝突"""
+    import random
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        # 加入隨機數字避免多個客戶端衝突
+        random_suffix = random.randint(1000, 9999)
+        client_id = f"{ip.replace('.', '_')}_{random_suffix}"
+        print(f"生成 MQTT 客戶端 ID: {client_id}")
+        return client_id
     except Exception:
-        return "default_client_id_12345"
+        random_suffix = random.randint(1000, 9999)
+        client_id = f"default_client_{random_suffix}"
+        print(f"使用預設 MQTT 客戶端 ID: {client_id}")
+        return client_id
 
 def play_audio_file(audio_file_path):
     """播放音頻檔案，支援 m4a 和 wav 格式"""
@@ -157,6 +165,7 @@ def audio_player_worker():
                 if play_once_mode:
                     played_files.add(name_for_tracking)
                     print(f"標記 name={name_for_tracking} 為已播放")
+                    print(f"目前已播放檔案: {list(played_files)}")
                     
             elif isinstance(audio_data, tuple) and len(audio_data) == 2:
                 # 單一檔案模式: (file_path, filename) 
@@ -242,14 +251,22 @@ def audio_player_worker():
 # --- MQTT 客戶端設定 (生產者) ---
 def on_connect(client, userdata, flags, rc, properties=None):
     """當成功連線到 MQTT Broker 時的回呼函式"""
-    print(f"MQTT 連接回調: rc={rc}")
+    print("MQTT 連接回調觸發")
+    print(f"連接結果碼: {rc}")
+    
     if rc == 0:
-        print("成功連線到 MQTT Broker!")
-        # 訂閱指定的主題
-        result = client.subscribe("puffin-test")
-        print(f"已訂閱主題: puffin-test (result: {result})")
+        print("成功連線到 MQTT Broker")
+        try:
+            result = client.subscribe("puffin-test")
+            print(f"訂閱 puffin-test 結果: {result}")
+            if result[0] == 0:
+                print("訂閱成功")
+            else:
+                print(f"訂閱失敗，錯誤碼: {result[0]}")
+        except Exception as e:
+            print(f"訂閱異常: {str(e)}")
     else:
-        print(f"連線失敗，返回碼: {rc}")
+        print(f"MQTT 連線失敗: {rc}")
 
 def on_message(client, userdata, msg):
     """當收到訂閱主題的訊息時的回呼函式"""
@@ -287,6 +304,8 @@ def on_message(client, userdata, msg):
                 print(f"解析到 name: {name}, family: {family}")
                 
                 # 檢查只播放一次模式 (基於 name)
+                print(f"播放模式檢查: play_once_mode={play_once_mode}, name={name}")
+                print(f"目前已播放檔案: {list(played_files)}")
                 if play_once_mode and name in played_files:
                     print(f"跳過播放: name={name} (已播放過，只播放一次模式)")
                     mqtt_logs[-1]['status'] = 'skipped'
