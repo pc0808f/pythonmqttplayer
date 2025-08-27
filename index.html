@@ -315,26 +315,15 @@
                             </li>
                         </ul>
                         
-                        <!-- 測試區域 -->
-                        <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <h4 class="font-semibold text-blue-800 mb-2">🧪 測試播放功能:</h4>
-                            <div class="flex items-center space-x-2">
-                                <input 
-                                    type="number" 
-                                    v-model="testFileNumber"
-                                    min="1" 
-                                    max="199" 
-                                    placeholder="輸入檔案編號 (1-199)"
-                                    class="px-3 py-1 border border-blue-300 rounded text-sm">
-                                <button 
-                                    @click="simulateMqttPlay(testFileNumber)"
-                                    class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded
-                                           transition-colors duration-200">
-                                    🎵 模擬播放
-                                </button>
+                        <!-- MQTT 指令範例 -->
+                        <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                            <h4 class="font-semibold text-green-800 mb-2">📋 MQTT 指令範例:</h4>
+                            <div class="space-y-2 text-sm text-green-700">
+                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h broker.MQTTGO.io -t puffin-test -m "001,01"</code>
+                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h broker.MQTTGO.io -t puffin-test -m "050,02"</code>
                             </div>
-                            <p class="text-xs text-blue-600 mt-2">
-                                此功能用於測試「只播放一次」模式，實際播放透過 MQTT 指令控制
+                            <p class="text-xs text-green-600 mt-2">
+                                使用 "name,family" 格式，例如 "001,01" 會播放 name/001.wav + family/01.wav
                             </p>
                         </div>
                     </div>
@@ -469,7 +458,6 @@
                     uploading: false,
                     playOnceMode: false,
                     playedFiles: [], // 已播放的檔案列表
-                    testFileNumber: 1, // 測試用檔案編號
                     // Log 相關數據
                     showLogPanel: false, // 是否顯示 Log 面板
                     isConnected: false, // MQTT 連接狀態
@@ -703,24 +691,6 @@
                 // 開始檢查播放狀態 (模擬 MQTT 播放通知)
                 startPlayStatusCheck() {
                     console.log('播放狀態檢查已啟動');
-                },
-                
-                // 模擬接收到 MQTT 播放指令
-                simulateMqttPlay(fileNumber) {
-                    const filename = `${fileNumber.padStart(3, '0')}.wav`;
-                    if (this.files.includes(filename)) {
-                        if (this.playOnceMode && this.isFilePlayed(filename)) {
-                            this.showNotification('error', `⚠️ 檔案 ${filename} 已經播放過了！`);
-                            return false;
-                        } else {
-                            this.markFileAsPlayed(filename);
-                            this.showNotification('success', `🎵 正在播放 ${filename}...`);
-                            return true;
-                        }
-                    } else {
-                        this.showNotification('error', `❌ 檔案 ${filename} 不存在！`);
-                        return false;
-                    }
                 },
                 
                 showNotification(type, message) {
