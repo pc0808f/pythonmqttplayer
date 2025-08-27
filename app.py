@@ -9,8 +9,6 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import paho.mqtt.client as mqtt
 import pygame
-from pydub import AudioSegment
-import io
 
 def get_resource_path(relative_path):
     """取得資源檔案的正確路徑，支援 PyInstaller 打包後的執行環境"""
@@ -31,7 +29,7 @@ def get_resource_path(relative_path):
 # 存放上傳檔案的資料夾
 UPLOAD_FOLDER = get_resource_path('uploads')
 # 允許的檔案擴展名
-ALLOWED_EXTENSIONS = {'wav', 'm4a'}
+ALLOWED_EXTENSIONS = {'wav'}
 
 # 建立一個執行緒安全的佇列，用於存放待播的音檔路徑
 playback_queue = queue.Queue()
@@ -56,7 +54,7 @@ app.config['SECRET_KEY'] = 'a_very_secret_key_for_flash_messages' # 用於顯示
 
 # --- 輔助函式 ---
 def allowed_file(filename):
-    """檢查檔案是否為允許的格式 (.wav, .m4a)"""
+    """檢查檔案是否為允許的格式 (.wav)"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -80,25 +78,12 @@ def get_ip_address():
         return client_id
 
 def play_audio_file(audio_file_path):
-    """播放音頻檔案，支援 m4a 和 wav 格式"""
+    """播放音頻檔案，支援 wav 格式"""
     try:
-        if audio_file_path.lower().endswith('.m4a'):
-            # 使用 pydub 轉換 m4a 為 wav 格式
-            audio = AudioSegment.from_file(audio_file_path, format="m4a")
-            # 轉換為 wav 格式的 bytes
-            wav_io = io.BytesIO()
-            audio.export(wav_io, format="wav")
-            wav_io.seek(0)
-            
-            # 使用 pygame 播放轉換後的音頻
-            pygame.mixer.music.load(wav_io)
-            pygame.mixer.music.play()
-            return True
-        else:
-            # 直接播放 wav 等其他格式
-            pygame.mixer.music.load(audio_file_path)
-            pygame.mixer.music.play()
-            return True
+        # 直接播放 wav 格式
+        pygame.mixer.music.load(audio_file_path)
+        pygame.mixer.music.play()
+        return True
     except Exception as e:
         print(f"播放音檔失敗: {e} - 檔案: {audio_file_path}")
         return False
@@ -463,7 +448,7 @@ def api_upload_files():
     else:
         return jsonify({
             'success': False, 
-            'message': '沒有選擇任何有效的 .wav/.m4a 檔案。'
+            'message': '沒有選擇任何有效的 .wav 檔案。'
         }), 400
 
 @app.route('/api/play-mode', methods=['POST'])
