@@ -45,6 +45,7 @@ play_queue_list = []  # 播放佇列（用於前端顯示）
 mqtt_logs = []  # MQTT 日誌
 last_mqtt_command = None  # 最後的 MQTT 指令
 last_mqtt_time = None  # 最後 MQTT 指令時間
+mqtt_client = None  # MQTT 客戶端實例
 
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
@@ -376,6 +377,17 @@ def vue_app():
         print(f"載入首頁時發生錯誤: {e}")
         return f"<h1>魔法音樂學院</h1><p>載入首頁時發生錯誤: {e}</p><p>請確認 index.html 檔案存在。</p>", 500
 
+@app.route('/sup')
+def supplement_list():
+    """補送名單頁面"""
+    try:
+        # 使用 get_resource_path 獲取 supplement.html 的正確路徑
+        base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath(".")
+        return send_from_directory(base_path, 'supplement.html')
+    except Exception as e:
+        print(f"載入補送名單頁面時發生錯誤: {e}")
+        return f"<h1>補送名單頁面</h1><p>載入頁面時發生錯誤: {e}</p><p>請確認 supplement.html 檔案存在。</p>", 500
+
 # --- API 路由 (供 Vue.js 前端使用) ---
 @app.route('/api/files', methods=['GET'])
 def api_get_files():
@@ -537,6 +549,46 @@ def api_get_status():
         'mqttLogs': mqtt_logs[-10:],  # 最近10條日誌
         'isConnected': True  # 簡化版，實際應該檢查 MQTT 連接狀態
     })
+
+@app.route('/api/send-mqtt', methods=['POST'])
+def api_send_mqtt():
+    """發送 MQTT 訊息 API (供補送名單頁面使用)"""
+    global mqtt_client
+    
+    data = request.get_json()
+    topic = data.get('topic', 'puffin-test')
+    message = data.get('message', '')
+    
+    if not message:
+        return jsonify({
+            'success': False,
+            'message': '訊息內容不能為空'
+        }), 400
+    
+    try:
+        if mqtt_client:
+            result = mqtt_client.publish(topic, message)
+            if result.rc == 0:
+                return jsonify({
+                    'success': True,
+                    'message': f'成功發送 MQTT 訊息: {message}',
+                    'topic': topic
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': f'發送失敗，錯誤碼: {result.rc}'
+                }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'MQTT 客戶端未連接'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'發送時發生錯誤: {str(e)}'
+        }), 500
 
 
 # --- 主程式進入點 ---

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>補送名單 - 魔法音樂學院</title>
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Comic+Neue:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Comic Neue', sans-serif;
+            background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 50%, #fecaca 100%);
+            min-height: 100vh;
+        }
+        
+        .family-sky { background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%); }
+        .family-ocean { background: linear-gradient(135deg, #cffafe 0%, #67e8f9 100%); }
+        .family-tree { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); }
+        .family-earth { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+        
+        .student-button {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .student-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .student-button:active {
+            transform: translateY(0);
+        }
+        
+        .magic-sparkle {
+            animation: sparkle 2s infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="min-h-screen p-6">
+        <!-- 標題區 -->
+        <div class="text-center mb-8">
+            <div class="inline-block bg-white/90 backdrop-blur-sm rounded-3xl px-8 py-6 shadow-xl">
+                <h1 class="text-4xl font-bold text-orange-800 mb-2">
+                    <i class="fas fa-scroll mr-3 text-yellow-600"></i>
+                    補送名單
+                </h1>
+                <p class="text-orange-600 text-lg">魔法音樂學院學生清單</p>
+                <div class="flex justify-center items-center mt-4 space-x-4">
+                    <span class="text-sm text-orange-700">
+                        <i class="fas fa-users mr-1"></i>
+                        總共 {{ studentList.length }} 位學生
+                    </span>
+                    <div class="magic-sparkle">
+                        <i class="fas fa-star text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 家族圖例 -->
+        <div class="max-w-4xl mx-auto mb-6">
+            <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-orange-800 mb-4 text-center">
+                    <i class="fas fa-flag mr-2"></i>家族圖例
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="family-sky rounded-xl p-3 text-center">
+                        <i class="fas fa-cloud text-blue-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-blue-800">天空</div>
+                        <div class="text-sm text-blue-700">家族 01</div>
+                    </div>
+                    <div class="family-ocean rounded-xl p-3 text-center">
+                        <i class="fas fa-wave-square text-cyan-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-cyan-800">海洋</div>
+                        <div class="text-sm text-cyan-700">家族 02</div>
+                    </div>
+                    <div class="family-tree rounded-xl p-3 text-center">
+                        <i class="fas fa-tree text-green-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-green-800">樹居</div>
+                        <div class="text-sm text-green-700">家族 03</div>
+                    </div>
+                    <div class="family-earth rounded-xl p-3 text-center">
+                        <i class="fas fa-mountain text-orange-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-orange-800">大地</div>
+                        <div class="text-sm text-orange-700">家族 04</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 學生按鍵網格 -->
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <button 
+                    v-for="student in studentList" 
+                    :key="student.audioFile"
+                    @click="sendMqttMessage(student)"
+                    :class="[
+                        'student-button',
+                        'rounded-2xl p-4 shadow-lg border-2 border-white/30',
+                        getFamilyColorClass(student.familyCode)
+                    ]"
+                >
+                    <div class="text-center">
+                        <div class="font-bold text-lg mb-1" :class="getFamilyTextClass(student.familyCode)">
+                            {{ student.audioFile }}
+                        </div>
+                        <div class="font-medium text-base" :class="getFamilyTextClass(student.familyCode)">
+                            {{ student.name }}
+                        </div>
+                        <div class="text-xs mt-2 opacity-75" :class="getFamilyTextClass(student.familyCode)">
+                            {{ student.family }}
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 狀態顯示 -->
+        <div class="fixed bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-xl max-w-sm">
+            <div class="text-sm text-gray-700">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-wifi text-green-500 mr-2"></i>
+                    <span class="font-semibold">MQTT 狀態</span>
+                </div>
+                <div v-if="lastSentMessage" class="text-xs">
+                    最後發送: {{ lastSentMessage }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    lastSentMessage: null,
+                    studentList: [
+                        // 1-114學年度新進教師名單
+                        {name: '宣心瑜', audioFile: '001', family: '大地', familyCode: '04'},
+                        {name: '連羿宣', audioFile: '002', family: '樹居', familyCode: '03'},
+                        {name: '呂詠潔', audioFile: '003', family: '海洋', familyCode: '02'},
+                        {name: '黃淋靖', audioFile: '004', family: '海洋', familyCode: '02'},
+                        {name: '曾斐瑜', audioFile: '005', family: '樹居', familyCode: '03'},
+                        {name: '黃上誠', audioFile: '006', family: '大地', familyCode: '04'},
+                        {name: '林心如', audioFile: '007', family: '天空', familyCode: '01'},
+                        {name: '蕭耀程', audioFile: '008', family: '樹居', familyCode: '03'},
+                        {name: '陳廷鎬', audioFile: '009', family: '海洋', familyCode: '02'},
+                        {name: '劉芸劭', audioFile: '010', family: '樹居', familyCode: '03'},
+                        
+                        // 2-114學年度轉入生家族名單
+                        {name: '馮樂天', audioFile: '011', family: '海洋', familyCode: '02'},
+                        {name: '馮可萊', audioFile: '012', family: '樹居', familyCode: '03'},
+                        {name: '葉軒宏', audioFile: '013', family: '大地', familyCode: '04'},
+                        {name: '戴妘芯', audioFile: '014', family: '海洋', familyCode: '02'},
+                        {name: '洪睿遠', audioFile: '015', family: '天空', familyCode: '01'},
+                        
+                        // 3-114學年度月橘班新生家族名單
+                        {name: '蔡以霏', audioFile: '016', family: '樹居', familyCode: '03'},
+                        {name: '齊妍安', audioFile: '017', family: '天空', familyCode: '01'},
+                        {name: '李慕宣', audioFile: '018', family: '樹居', familyCode: '03'},
+                        {name: '林培綸', audioFile: '019', family: '大地', familyCode: '04'},
+                        {name: '鮑閔華', audioFile: '020', family: '天空', familyCode: '01'},
+                        {name: '陳亮全', audioFile: '021', family: '樹居', familyCode: '03'},
+                        {name: '王語', audioFile: '022', family: '海洋', familyCode: '02'},
+                        {name: '施語樂', audioFile: '023', family: '大地', familyCode: '04'},
+                        {name: '莊玥熙', audioFile: '024', family: '天空', familyCode: '01'},
+                        {name: '陳宥翰', audioFile: '025', family: '海洋', familyCode: '02'},
+                        {name: '馮靖勛', audioFile: '026', family: '大地', familyCode: '04'},
+                        {name: '何昊謙', audioFile: '027', family: '樹居', familyCode: '03'},
+                        {name: '白亞仟', audioFile: '028', family: '大地', familyCode: '04'},
+                        {name: '許願', audioFile: '029', family: '天空', familyCode: '01'},
+                        {name: '李耀恩', audioFile: '030', family: '大地', familyCode: '04'},
+                        {name: '王苡僑', audioFile: '031', family: '海洋', familyCode: '02'},
+                        {name: '陳曦', audioFile: '032', family: '樹居', familyCode: '03'},
+                        {name: '楊凌鳶', audioFile: '033', family: '天空', familyCode: '01'},
+                        {name: '葉昱廷', audioFile: '034', family: '天空', familyCode: '01'},
+                        {name: '戴奕芯', audioFile: '035', family: '海洋', familyCode: '02'},
+                        {name: '鍾雙如', audioFile: '036', family: '樹居', familyCode: '03'},
+                        {name: '黃暄甯', audioFile: '037', family: '大地', familyCode: '04'},
+                        {name: '張秝翟', audioFile: '038', family: '天空', familyCode: '01'},
+                        {name: '林允希', audioFile: '039', family: '樹居', familyCode: '03'},
+                        {name: '林一', audioFile: '040', family: '天空', familyCode: '01'},
+                        {name: '呂欣祐', audioFile: '041', family: '海洋', familyCode: '02'},
+                        {name: '李雨霏', audioFile: '042', family: '樹居', familyCode: '03'},
+                        {name: '黃心言', audioFile: '043', family: '天空', familyCode: '01'},
+                        {name: '黃姝云', audioFile: '044', family: '大地', familyCode: '04'},
+                        {name: '陳諾', audioFile: '045', family: '海洋', familyCode: '02'},
+                        {name: '紀承宇', audioFile: '046', family: '樹居', familyCode: '03'},
+                        {name: '左韜', audioFile: '047', family: '天空', familyCode: '01'},
+                        {name: '楊苙禾', audioFile: '048', family: '天空', familyCode: '01'},
+                        {name: '洪韵棠', audioFile: '049', family: '樹居', familyCode: '03'},
+                        {name: '黃銳亞', audioFile: '050', family: '海洋', familyCode: '02'},
+                        {name: '顧沐祐', audioFile: '051', family: '海洋', familyCode: '02'},
+                        {name: '詹晴允', audioFile: '052', family: '大地', familyCode: '04'},
+                        {name: '湯媛媛', audioFile: '053', family: '樹居', familyCode: '03'},
+                        {name: '何泰翰', audioFile: '054', family: '大地', familyCode: '04'},
+                        {name: '王樂翔', audioFile: '055', family: '海洋', familyCode: '02'},
+                        {name: '潘宜林', audioFile: '056', family: '天空', familyCode: '01'},
+                        {name: '陳韻筑', audioFile: '057', family: '大地', familyCode: '04'},
+                        {name: '李柔萭', audioFile: '058', family: '樹居', familyCode: '03'},
+                        {name: '劉丞芯', audioFile: '059', family: '海洋', familyCode: '02'},
+                        {name: '戴光頡', audioFile: '060', family: '海洋', familyCode: '02'},
+                        {name: '戴光玨', audioFile: '061', family: '天空', familyCode: '01'},
+                        {name: '胡語恩', audioFile: '062', family: '大地', familyCode: '04'},
+                        {name: '單陽', audioFile: '063', family: '海洋', familyCode: '02'},
+                        {name: '高晨恩', audioFile: '064', family: '大地', familyCode: '04'},
+                        {name: '高梓薰', audioFile: '065', family: '海洋', familyCode: '02'},
+                        
+                        // 4-114學年度野薑花班新生家族名單
+                        {name: '王恩逵', audioFile: '066', family: '天空', familyCode: '01'},
+                        {name: '林允睿', audioFile: '067', family: '大地', familyCode: '04'},
+                        {name: '林凱恩', audioFile: '068', family: '海洋', familyCode: '02'},
+                        {name: '林軒禾', audioFile: '069', family: '大地', familyCode: '04'},
+                        {name: '張詠琁', audioFile: '070', family: '樹居', familyCode: '03'},
+                        {name: '林庭溱', audioFile: '071', family: '大地', familyCode: '04'},
+                        {name: '羅開元', audioFile: '072', family: '天空', familyCode: '01'},
+                        {name: '江宇菲', audioFile: '073', family: '樹居', familyCode: '03'},
+                        {name: '李沐哲', audioFile: '074', family: '海洋', familyCode: '02'},
+                        {name: '彭子軒', audioFile: '075', family: '樹居', familyCode: '03'},
+                        {name: '潘喬晞', audioFile: '076', family: '大地', familyCode: '04'},
+                        {name: '黃哈利', audioFile: '077', family: '天空', familyCode: '01'},
+                        {name: '張立楷', audioFile: '078', family: '樹居', familyCode: '03'},
+                        {name: '高曉晰', audioFile: '079', family: '天空', familyCode: '01'},
+                        {name: '白唯辰', audioFile: '080', family: '天空', familyCode: '01'},
+                        {name: '陳溡', audioFile: '081', family: '海洋', familyCode: '02'},
+                        {name: '張睦妍', audioFile: '082', family: '大地', familyCode: '04'},
+                        {name: '黃可威', audioFile: '083', family: '海洋', familyCode: '02'},
+                        {name: '陳芊夏', audioFile: '084', family: '樹居', familyCode: '03'},
+                        {name: '陳羽桐', audioFile: '085', family: '海洋', familyCode: '02'},
+                        {name: '黃力諾', audioFile: '086', family: '樹居', familyCode: '03'},
+                        {name: '程少澤', audioFile: '087', family: '樹居', familyCode: '03'},
+                        {name: '陳奕飛', audioFile: '088', family: '大地', familyCode: '04'},
+                        {name: '林庭煦', audioFile: '089', family: '大地', familyCode: '04'},
+                        {name: '林子媞', audioFile: '090', family: '海洋', familyCode: '02'},
+                        {name: '詹承恩', audioFile: '091', family: '天空', familyCode: '01'},
+                        {name: '黃將果', audioFile: '092', family: '海洋', familyCode: '02'},
+                        {name: '王秐懿', audioFile: '093', family: '天空', familyCode: '01'},
+                        {name: '劉寧寧', audioFile: '094', family: '大地', familyCode: '04'}
+                    ]
+                }
+            },
+            methods: {
+                getFamilyColorClass(familyCode) {
+                    switch(familyCode) {
+                        case '01': return 'family-sky';
+                        case '02': return 'family-ocean';
+                        case '03': return 'family-tree';
+                        case '04': return 'family-earth';
+                        default: return 'bg-gray-200';
+                    }
+                },
+                
+                getFamilyTextClass(familyCode) {
+                    switch(familyCode) {
+                        case '01': return 'text-blue-800';
+                        case '02': return 'text-cyan-800';
+                        case '03': return 'text-green-800';
+                        case '04': return 'text-orange-800';
+                        default: return 'text-gray-800';
+                    }
+                },
+                
+                async sendMqttMessage(student) {
+                    const message = `${student.audioFile},${student.familyCode}`;
+                    this.lastSentMessage = `${student.name}: ${message}`;
+                    
+                    try {
+                        // 發送 MQTT 訊息到後端
+                        const response = await fetch('/api/send-mqtt', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                topic: 'puffin-test',
+                                message: message
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            console.log(`成功發送 MQTT 訊息: ${message}`);
+                        } else {
+                            console.error('發送 MQTT 訊息失敗');
+                        }
+                    } catch (error) {
+                        console.error('發送 MQTT 訊息時發生錯誤:', error);
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
