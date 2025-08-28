@@ -43,6 +43,19 @@
             transform: translateY(0);
         }
         
+        .student-button.disabled {
+            opacity: 0.4;
+            transform: translateY(0) !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+            background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
+        }
+        
+        .student-button.disabled:hover {
+            transform: translateY(0) !important;
+            box-shadow: none !important;
+        }
+        
         .magic-sparkle {
             animation: sparkle 2s infinite;
         }
@@ -113,22 +126,26 @@
                 <button 
                     v-for="student in studentList" 
                     :key="student.audioFile"
-                    @click="sendMqttMessage(student)"
+                    @click="!isStudentPlayed(student.audioFile) && sendMqttMessage(student)"
+                    :disabled="isStudentPlayed(student.audioFile)"
                     :class="[
                         'student-button',
                         'rounded-2xl p-4 shadow-lg border-2 border-white/30',
-                        getFamilyColorClass(student.familyCode)
+                        isStudentPlayed(student.audioFile) ? 'disabled' : getFamilyColorClass(student.familyCode)
                     ]"
                 >
                     <div class="text-center">
-                        <div class="font-bold text-lg mb-1" :class="getFamilyTextClass(student.familyCode)">
+                        <div class="font-bold text-lg mb-1" :class="isStudentPlayed(student.audioFile) ? 'text-gray-400' : getFamilyTextClass(student.familyCode)">
                             {{ student.audioFile }}
                         </div>
-                        <div class="font-medium text-base" :class="getFamilyTextClass(student.familyCode)">
+                        <div class="font-medium text-base" :class="isStudentPlayed(student.audioFile) ? 'text-gray-400' : getFamilyTextClass(student.familyCode)">
                             {{ student.name }}
                         </div>
-                        <div class="text-xs mt-2 opacity-75" :class="getFamilyTextClass(student.familyCode)">
+                        <div class="text-xs mt-2 opacity-75" :class="isStudentPlayed(student.audioFile) ? 'text-gray-500' : getFamilyTextClass(student.familyCode)">
                             {{ student.family }}
+                        </div>
+                        <div v-if="isStudentPlayed(student.audioFile)" class="text-xs mt-1 text-gray-500">
+                            <i class="fas fa-check-circle mr-1"></i>已播放
                         </div>
                     </div>
                 </button>
@@ -156,6 +173,8 @@
             data() {
                 return {
                     lastSentMessage: null,
+                    playedFiles: [],
+                    playOnceMode: false,
                     studentList: [
                         // 1-114學年度新進教師名單
                         {name: '宣心瑜', audioFile: '001', family: '大地', familyCode: '04'},
@@ -261,6 +280,15 @@
                     ]
                 }
             },
+            async mounted() {
+                // 頁面載入時獲取已播放檔案列表
+                await this.loadPlayedFiles();
+                
+                // 設定定時器定期檢查已播放狀態
+                setInterval(async () => {
+                    await this.loadPlayedFiles();
+                }, 3000); // 每3秒檢查一次
+            },
             methods: {
                 getFamilyColorClass(familyCode) {
                     switch(familyCode) {
@@ -282,7 +310,30 @@
                     }
                 },
                 
+                async loadPlayedFiles() {
+                    try {
+                        const response = await fetch('/api/played-files');
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.playedFiles = data.playedFiles || [];
+                            this.playOnceMode = data.playOnceMode || false;
+                        }
+                    } catch (error) {
+                        console.error('載入已播放檔案列表時發生錯誤:', error);
+                    }
+                },
+                
+                isStudentPlayed(audioFile) {
+                    return this.playedFiles.includes(audioFile);
+                },
+                
                 async sendMqttMessage(student) {
+                    // 雙重檢查是否已播放
+                    if (this.isStudentPlayed(student.audioFile)) {
+                        console.log(`跳過已播放的檔案: ${student.audioFile}`);
+                        return;
+                    }
+                    
                     const message = `${student.audioFile},${student.familyCode}`;
                     this.lastSentMessage = `${student.name}: ${message}`;
                     
@@ -301,6 +352,14 @@
                         
                         if (response.ok) {
                             console.log(`成功發送 MQTT 訊息: ${message}`);
+                            // 立即將按鍵標記為已播放以防止重複點擊
+                            if (!this.playedFiles.includes(student.audioFile)) {
+                                this.playedFiles.push(student.audioFile);
+                            }
+                            // 延後重新載入已播放檔案列表以確保與伺服器同步
+                            setTimeout(() => {
+                                this.loadPlayedFiles();
+                            }, 2000);
                         } else {
                             console.error('發送 MQTT 訊息失敗');
                         }

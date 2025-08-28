@@ -483,10 +483,11 @@ def api_set_play_mode():
 
 @app.route('/api/played-files', methods=['GET'])
 def api_get_played_files():
-    """取得已播放檔案列表"""
+    """取得已播放檔案列表 (供補送名單頁面使用)"""
     return jsonify({
         'playedFiles': list(played_files),
-        'playOnceMode': play_once_mode
+        'playOnceMode': play_once_mode,
+        'success': True
     })
 
 @app.route('/api/reset-played', methods=['POST'])
