@@ -22,7 +22,7 @@
 - **音訊佇列系統**：使用 `queue.Queue()` 實現執行緒安全的播放佇列
 - **MQTT 訊息格式**：接收 `name,family` 格式的訊息（如 "001,01"），依序播放 `name/001.wav` → `family/01.wav`
 - **檔案儲存**：音訊檔案（.wav）儲存在 `uploads/name/`（姓名）與 `uploads/family/`（家族）兩個子目錄中
-- **MQTT Broker**：連接到 "broker.MQTTGO.io:1883"
+- **MQTT Broker**：連接到 "MQTTGO.io:1883"
 
 ## 執行指令
 

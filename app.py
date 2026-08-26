@@ -356,7 +356,7 @@ def setup_mqtt_client():
 
     try:
         print("正在嘗試連線到 MQTT Broker...")
-        client.connect("broker.MQTTGO.io", 1883, 60)
+        client.connect("MQTTGO.io", 1883, 60)
         # client.loop_start() 會在背景執行緒中處理網路迴圈，不會阻塞主程式
         client.loop_start()
         return client

@@ -5,7 +5,24 @@
       "Bash(git add:*)",
       "Bash(pip install:*)",
       "Bash(python:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "PowerShell(winget install *)",
+      "PowerShell($ff = Get-ChildItem \"$env:LOCALAPPDATA\\\\Microsoft\\\\WinGet\\\\Packages\" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName; if \\(-not $ff\\) { $ff = \\(Get-Command ffmpeg -ErrorAction SilentlyContinue\\).Source }; Write-Output \"FFMPEG=$ff\"; & $ff -version | Select-Object -First 1)",
+      "Bash(grep -viE \"archives/|\\\\.m4a$\")",
+      "PowerShell(python build.py)",
+      "PowerShell(python -c \"import flask; print\\('flask', flask.__version__\\)\" 2>&1)",
+      "PowerShell(python -c \"import flask_cors; print\\('flask_cors OK'\\)\" 2>&1)",
+      "PowerShell(python -c \"import paho.mqtt; print\\('paho OK'\\)\" 2>&1)",
+      "PowerShell(python -c \"import pygame; print\\('pygame OK'\\)\" 2>&1)",
+      "PowerShell(python -c \"import werkzeug; print\\('werkzeug', werkzeug.__version__\\)\" 2>&1)",
+      "PowerShell(python -m pip install --quiet Flask flask-cors Werkzeug 2>&1)",
+      "PowerShell(python -c \"import flask, flask_cors, werkzeug, paho.mqtt, pygame; print\\('�����̮ۨM�� OK'\\)\" 2>&1)",
+      "PowerShell(python build.py 2>&1 | Select-Object -Last 12)",
+      "Bash(git commit -m ' *)",
+      "Bash(iconv -f CP950 -t UTF-8)",
+      "Bash(xargs git log -1 --format=\"%ci %h %s\")",
+      "Bash(git fetch *)",
+      "Bash(xargs git log --oneline -1)"
     ],
     "deny": []
   }

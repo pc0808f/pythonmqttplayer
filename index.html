@@ -311,7 +311,7 @@
                             </li>
                             <li class="flex items-start">
                                 <span class="mr-2">🏰</span>
-                                魔法城堡: <code class="bg-purple-200 px-2 py-1 rounded text-sm">broker.MQTTGO.io:1883</code>
+                                魔法城堡: <code class="bg-purple-200 px-2 py-1 rounded text-sm">MQTTGO.io:1883</code>
                             </li>
                         </ul>
                         
@@ -319,8 +319,8 @@
                         <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                             <h4 class="font-semibold text-green-800 mb-2">📋 MQTT 指令範例:</h4>
                             <div class="space-y-2 text-sm text-green-700">
-                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h broker.MQTTGO.io -t puffin-test -m "001,01"</code>
-                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h broker.MQTTGO.io -t puffin-test -m "050,02"</code>
+                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h MQTTGO.io -t puffin-test -m "001,01"</code>
+                                <code class="bg-green-100 px-2 py-1 rounded block">mosquitto_pub -h MQTTGO.io -t puffin-test -m "050,02"</code>
                             </div>
                             <p class="text-xs text-green-600 mt-2">
                                 使用 "name,family" 格式，例如 "001,01" 會播放 name/001.wav + family/01.wav
@@ -781,7 +781,7 @@
                     // 模擬連接狀態（實際應該從後端獲取）
                     setTimeout(() => {
                         this.isConnected = true;
-                        this.addLog('mqtt', '已連接到 MQTT Broker: broker.MQTTGO.io:1883');
+                        this.addLog('mqtt', '已連接到 MQTT Broker: MQTTGO.io:1883');
                         this.addLog('mqtt', '已訂閱主題: puffin-test');
                     }, 2000);
                     
