@@ -20,8 +20,8 @@
 ### 關鍵組件說明
 
 - **音訊佇列系統**：使用 `queue.Queue()` 實現執行緒安全的播放佇列
-- **MQTT 訊息格式**：接收 "playXXX" 格式的訊息（如 "play001"），播放對應的 XXX.wav 檔案
-- **檔案儲存**：所有上傳的音訊檔案儲存在 `uploads/` 目錄中
+- **MQTT 訊息格式**：接收 `name,family` 格式的訊息（如 "001,01"），依序播放 `name/001.wav` → `family/01.wav`
+- **檔案儲存**：音訊檔案（.wav）儲存在 `uploads/name/`（姓名）與 `uploads/family/`（家族）兩個子目錄中
 - **MQTT Broker**：連接到 "broker.MQTTGO.io:1883"
 
 ## 執行指令
@@ -52,8 +52,24 @@ python app.py
 可以透過以下指令安裝相依性套件：
 
 ```bash
+pip install -r requirements.txt
+# 或手動安裝：
 pip install flask flask-cors paho-mqtt werkzeug pygame
 ```
+
+### 打包成執行檔（內嵌音效版）
+
+使用 `build.py` 透過 PyInstaller 打包成單一執行檔，會將 `index.html`、`uploads/name/`、`uploads/family/` 內嵌其中：
+
+```bash
+python build.py
+```
+
+- 產物位於 `dist/魔法音樂學院_完整版.exe`
+- 音效資料夾內容會即時抓取，更新音檔後重跑 `build.py` 即可產生新版
+- 執行時 `app.py` 的 `get_resource_path()` 會從 PyInstaller 的 `sys._MEIPASS` 臨時目錄讀取內嵌資源
+
+> 轉檔提醒：程式只支援 `.wav`。若音效來源為 `.m4a` 等格式，需先用 ffmpeg 轉檔（例如 `ffmpeg -i in.m4a -ar 44100 -ac 2 -c:a pcm_s16le out.wav`）再放入 `uploads/`。
 
 ## 檔案結構
 
@@ -61,8 +77,14 @@ pip install flask flask-cors paho-mqtt werkzeug pygame
 pythonmqttplayer/
 ├── app.py              # 主應用程式檔案 (Flask API 後端)
 ├── index.html          # Vue.js 魔法學院風格前端 (主界面)
+├── build.py            # PyInstaller 打包腳本（產出內嵌音效的單一執行檔）
+├── requirements.txt    # Python 相依套件清單
 └── uploads/            # 音訊檔案儲存目錄（執行時建立）
+    ├── name/           # 姓名音效 (001.wav ~ NNN.wav)
+    └── family/         # 家族音效 (01.wav ~ 04.wav)
 ```
+
+> 注意：`uploads/name/` 與 `uploads/family/` 已在 `.gitignore` 中排除，音效檔不進版控（本機執行時使用磁碟上的檔案）。
 
 ## 前端介面
 
@@ -87,8 +109,10 @@ pythonmqttplayer/
 ### MQTT 訊息格式
 
 - 主題：`puffin-test`
-- 訊息格式：`playXXX`（XXX 為數字，對應 XXX.wav 檔案）
-- 範例：發送 "play001" 播放 "001.wav"
+- 訊息格式：`name,family`（以逗號分隔，對應 `name/name.wav` 與 `family/family.wav`）
+- 範例：發送 "001,01" 依序播放 `uploads/name/001.wav` → `uploads/family/01.wav`
+- 家族代號對應：`01`=天空、`02`=海洋、`03`=樹居、`04`=大地
+- 若某個檔案不存在會自動跳過，只播放存在的檔案
 
 ### 安全配置
 
