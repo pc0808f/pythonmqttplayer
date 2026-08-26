@@ -777,15 +777,9 @@
                 initializeLogSystem() {
                     this.addLog('info', '魔法音樂學院啟動');
                     this.addLog('info', '正在連接 MQTT Broker...');
-                    
-                    // 模擬連接狀態（實際應該從後端獲取）
-                    setTimeout(() => {
-                        this.isConnected = true;
-                        this.addLog('mqtt', '已連接到 MQTT Broker: MQTTGO.io:1883');
-                        this.addLog('mqtt', '已訂閱主題: puffin-test');
-                    }, 2000);
-                    
-                    // 定期更新狀態
+
+                    // 連線狀態改由後端 /api/status 的 isConnected 決定（不再前端假裝）
+                    // 定期更新狀態，輪詢會即時反映真實的 MQTT 連線狀態
                     this.startStatusPolling();
                 },
                 

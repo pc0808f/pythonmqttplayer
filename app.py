@@ -46,6 +46,7 @@ mqtt_logs = []  # MQTT 日誌
 last_mqtt_command = None  # 最後的 MQTT 指令
 last_mqtt_time = None  # 最後 MQTT 指令時間
 mqtt_client = None  # MQTT 客戶端實例
+mqtt_connected = False  # 真實的 MQTT 連線狀態（由 on_connect / on_disconnect 更新）
 
 # --- Flask 應用程式設定 ---
 app = Flask(__name__)
@@ -237,10 +238,12 @@ def audio_player_worker():
 # --- MQTT 客戶端設定 (生產者) ---
 def on_connect(client, userdata, flags, rc, properties=None):
     """當成功連線到 MQTT Broker 時的回呼函式"""
+    global mqtt_connected
     print("MQTT 連接回調觸發")
     print(f"連接結果碼: {rc}")
-    
+
     if rc == 0:
+        mqtt_connected = True
         print("成功連線到 MQTT Broker")
         try:
             result = client.subscribe("puffin-test")
@@ -252,7 +255,16 @@ def on_connect(client, userdata, flags, rc, properties=None):
         except Exception as e:
             print(f"訂閱異常: {str(e)}")
     else:
+        mqtt_connected = False
         print(f"MQTT 連線失敗: {rc}")
+
+def on_disconnect(client, userdata, *args):
+    """當與 MQTT Broker 斷線時的回呼函式（含意外斷線）"""
+    global mqtt_connected
+    mqtt_connected = False
+    # paho VERSION1 會以 (client, userdata, rc) 呼叫；用 *args 相容不同版本簽章
+    rc = args[0] if args else None
+    print(f"MQTT 已斷線，結果碼: {rc}")
 
 def on_message(client, userdata, msg):
     """當收到訂閱主題的訊息時的回呼函式"""
@@ -354,6 +366,7 @@ def setup_mqtt_client():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=client_id)
     client.on_connect = on_connect
     client.on_message = on_message
+    client.on_disconnect = on_disconnect
 
     try:
         print("正在嘗試連線到 MQTT Broker...")
@@ -362,6 +375,9 @@ def setup_mqtt_client():
         client.loop_start()
         return client
     except Exception as e:
+        # 連線失敗時明確標記為未連線（例如 broker 位址錯誤、無網路）
+        global mqtt_connected
+        mqtt_connected = False
         print(f"無法連線到 MQTT Broker: {e}")
         return None
 
@@ -522,7 +538,7 @@ def api_reset_played():
 @app.route('/api/status', methods=['GET'])
 def api_get_status():
     """取得即時播放狀態"""
-    global current_playing, playing_start_time, play_queue_list, last_mqtt_command, last_mqtt_time, mqtt_logs
+    global current_playing, playing_start_time, play_queue_list, last_mqtt_command, last_mqtt_time, mqtt_logs, mqtt_connected
     
     # 更新佇列狀態（移除已播放的）
     if current_playing and current_playing in play_queue_list:
@@ -548,7 +564,7 @@ def api_get_status():
         'lastMqttCommand': last_mqtt_command,
         'lastMqttTime': last_mqtt_formatted,
         'mqttLogs': mqtt_logs[-10:],  # 最近10條日誌
-        'isConnected': True  # 簡化版，實際應該檢查 MQTT 連接狀態
+        'isConnected': mqtt_connected  # 真實的 MQTT 連線狀態
     })
 
 @app.route('/api/send-mqtt', methods=['POST'])
