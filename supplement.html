@@ -25,9 +25,9 @@
         }
         
         .family-sky { background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%); }
-        .family-ocean { background: linear-gradient(135deg, #cffafe 0%, #67e8f9 100%); }
-        .family-tree { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); }
-        .family-earth { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+        .family-ocean { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); }
+        .family-tree { background: linear-gradient(135deg, #fecaca 0%, #f87171 100%); }
+        .family-earth { background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%); }
         
         .student-button {
             transition: all 0.3s ease;
@@ -102,19 +102,19 @@
                         <div class="text-sm text-blue-700">家族 01</div>
                     </div>
                     <div class="family-ocean rounded-xl p-3 text-center">
-                        <i class="fas fa-wave-square text-cyan-700 text-xl mb-1"></i>
-                        <div class="font-semibold text-cyan-800">海洋</div>
-                        <div class="text-sm text-cyan-700">家族 02</div>
+                        <i class="fas fa-wave-square text-green-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-green-800">海洋</div>
+                        <div class="text-sm text-green-700">家族 02</div>
                     </div>
                     <div class="family-tree rounded-xl p-3 text-center">
-                        <i class="fas fa-tree text-green-700 text-xl mb-1"></i>
-                        <div class="font-semibold text-green-800">樹居</div>
-                        <div class="text-sm text-green-700">家族 03</div>
+                        <i class="fas fa-tree text-red-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-red-800">樹居</div>
+                        <div class="text-sm text-red-700">家族 03</div>
                     </div>
                     <div class="family-earth rounded-xl p-3 text-center">
-                        <i class="fas fa-mountain text-orange-700 text-xl mb-1"></i>
-                        <div class="font-semibold text-orange-800">大地</div>
-                        <div class="text-sm text-orange-700">家族 04</div>
+                        <i class="fas fa-mountain text-yellow-700 text-xl mb-1"></i>
+                        <div class="font-semibold text-yellow-800">大地</div>
+                        <div class="text-sm text-yellow-700">家族 04</div>
                     </div>
                 </div>
             </div>
@@ -303,9 +303,9 @@
                 getFamilyTextClass(familyCode) {
                     switch(familyCode) {
                         case '01': return 'text-blue-800';
-                        case '02': return 'text-cyan-800';
-                        case '03': return 'text-green-800';
-                        case '04': return 'text-orange-800';
+                        case '02': return 'text-green-800';
+                        case '03': return 'text-red-800';
+                        case '04': return 'text-yellow-800';
                         default: return 'text-gray-800';
                     }
                 },

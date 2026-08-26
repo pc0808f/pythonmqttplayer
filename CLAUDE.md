@@ -112,3 +112,29 @@ pythonmqttplayer/
 ### 客戶端 ID 產生
 
 MQTT 客戶端 ID 使用本機 IP 位址，如果無法取得則使用預設值 "default_client_id_12345"。
+
+## 打包指令
+
+### 預設打包方式（推薦）
+
+```bash
+python tools\build\build_embedded_audio.py
+```
+
+**重要**: 當用戶要求「打包」時，請優先使用此自定義腳本，而非直接執行 .spec 檔案。
+
+此腳本會：
+- 自動檢查必要檔案和目錄
+- 統計並內嵌所有音效檔
+- 清理舊的 build/dist 目錄
+- 優先使用現有的 `MagicMusicAcademy_Embedded.spec` 檔案
+- 自動創建完整的 Release 包（包含說明文件）
+- 提供詳細的打包狀態報告
+
+### 替代打包方式
+
+```bash
+pyinstaller MagicMusicAcademy_Embedded.spec
+```
+
+僅在需要快速測試或特定需求時使用，不會創建完整的 Release 包。

@@ -5,7 +5,8 @@
       "Bash(git add:*)",
       "Bash(pip install:*)",
       "Bash(python:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "PowerShell(Get-ChildItem \"PythonMQTTPlayer-EmbeddedAudio-v2.3.0\" | Select-Object Name, @{n='MB';e={[math]::Round\\($_.Length/1MB,1\\)}})"
     ],
     "deny": []
   }
