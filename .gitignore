@@ -84,3 +84,8 @@ uploads/family/
 # Temporary files
 *.tmp
 *.temp
+
+# 二進位產物（打包執行檔、發布壓縮包）— 不進版控，改用 GitHub Releases 發佈
+*.exe
+*.zip
+PythonMQTTPlayer-EmbeddedAudio-*/*.exe

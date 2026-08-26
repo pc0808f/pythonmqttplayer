@@ -25,7 +25,10 @@
       "Bash(xargs git log --oneline -1)",
       "PowerShell(Get-ChildItem \"PythonMQTTPlayer-EmbeddedAudio-v2.3.0\" | Select-Object Name, @{n='MB';e={[math]::Round\\($_.Length/1MB,1\\)}})",
       "Bash(git commit *)",
-      "Bash(echo \"---EXIT: $?---\")"
+      "Bash(echo \"---EXIT: $?---\")",
+      "Bash(git stash *)",
+      "Bash(git rm *)",
+      "Bash(grep -iE \"\\\\.exe$|\\\\.zip$\")"
     ],
     "deny": []
   }
