@@ -33,6 +33,7 @@ SEP = ";" if os.name == "nt" else ":"
 # 要內嵌的資源： (來源路徑, 打包後在 bundle 內的目標路徑)
 DATA = [
     ("index.html", "."),
+    ("supplement.html", "."),  # 補送名單頁 (/sup 路由使用)
     ("uploads/name", "uploads/name"),
     ("uploads/family", "uploads/family"),
 ]
