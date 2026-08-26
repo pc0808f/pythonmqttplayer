@@ -22,7 +22,10 @@
       "Bash(iconv -f CP950 -t UTF-8)",
       "Bash(xargs git log -1 --format=\"%ci %h %s\")",
       "Bash(git fetch *)",
-      "Bash(xargs git log --oneline -1)"
+      "Bash(xargs git log --oneline -1)",
+      "PowerShell(Get-ChildItem \"PythonMQTTPlayer-EmbeddedAudio-v2.3.0\" | Select-Object Name, @{n='MB';e={[math]::Round\\($_.Length/1MB,1\\)}})",
+      "Bash(git commit *)",
+      "Bash(echo \"---EXIT: $?---\")"
     ],
     "deny": []
   }
