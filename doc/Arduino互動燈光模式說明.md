@@ -16,7 +16,7 @@
 
 | 動作 | Topic | Payload | 說明 |
 |---|---|---|---|
-| 主持人按「進入互動模式」 | `puffin-control` | `INTERACTIVE_START` | 燈全暗,進入等待模式一 |
+| 主持人按「進入互動模式」 | `puffin-control` | `INTERACTIVE_START` | 燈全暗,進入等待模式一(**可重複按/補送**,不檢查目前狀態) |
 | 主持人按「模式一」 | `puffin-control` | `MODE1_START` | 跑 8 秒燈效 |
 | 主持人按「模式二」 | `puffin-control` | `MODE2_START` | 隨機燈光,結束後自動回到待機刷卡 |
 | 主持人按「離開互動模式」 | `puffin-control` | `INTERACTIVE_EXIT` | **緊急退出**,不管目前在哪個子狀態都立刻生效,優先權最高 |
@@ -98,16 +98,16 @@ void loop() {
       break;
 
     case STATE_MODE1_RUNNING:
-      runMode1Animation();  // 燈效,逐 frame 更新即可
+      runMode1Animation();  // 詳見「模式一燈效規格」
       if (millis() - mode1StartTime >= 8000) {
-        allLedsOff();  // 或維持在某個結束畫面,依設計決定
+        allLedsOff();
         interactiveState = STATE_WAITING_MODE2;
       }
       break;
 
     case STATE_MODE2_RUNNING:
-      runMode2RandomLeds();  // 隨機燈光邏輯
-      if (mode2Finished()) {  // 自訂結束條件,例如跑滿 N 秒或跑 N 輪
+      runMode2RandomLeds();  // 詳見「模式二燈效規格」
+      if (millis() - mode2StartTime >= 7000) {  // 模式二總長 7 秒
         allLedsOff();
         interactiveState = STATE_IDLE;
         nfcScanningEnabled = true;  // 恢復掃描,回到開機後的待機模式
@@ -121,6 +121,54 @@ void loop() {
 }
 ```
 
+## 模式一燈效規格(8 秒,漸亮漸暗)
+
+- **0~5 秒**:從全暗線性漸亮到最亮的 **50% 亮度**
+- **5~8 秒**:從 50% 亮度線性漸暗回全暗
+- 「50% 亮度」是相對於燈條/燈珠的最大亮度,實際數值請依使用的 LED 函式庫調整(範例假設亮度值範圍 0~255,50% ≈ 128)
+
+```cpp
+const uint8_t MODE1_PEAK_BRIGHTNESS = 128;  // 50%,依實際燈條調整
+
+void runMode1Animation() {
+  unsigned long elapsed = millis() - mode1StartTime;
+  uint8_t brightness;
+
+  if (elapsed <= 5000) {
+    // 0~5秒:漸亮,0 -> 50%
+    brightness = map(elapsed, 0, 5000, 0, MODE1_PEAK_BRIGHTNESS);
+  } else {
+    // 5~8秒:漸暗,50% -> 0
+    unsigned long fadeElapsed = elapsed - 5000;
+    brightness = map(fadeElapsed, 0, 3000, MODE1_PEAK_BRIGHTNESS, 0);
+  }
+
+  setAllLedsBrightness(brightness);  // 換成實際的燈效函式(FastLED.showColor 等)
+}
+```
+
+## 模式二燈效規格(7 秒,亂數閃燈)
+
+- 總長 **7 秒**,時間到自動結束、回到 `STATE_IDLE`
+- 效果是**隨機閃燈**,要有魔幻感,但**不要用高頻閃爍**(避免類似頻閃/爆閃的效果,對現場的小朋友也比較友善)
+- 做法建議:不要每個 loop tick 都換顏色,而是每隔一段隨機的時間(例如 150~400ms)才切換一次顏色/亮度,做出「閃爍」而不是「爆閃」的感覺
+
+```cpp
+unsigned long mode2LastChangeTime = 0;
+unsigned long mode2NextInterval = 0;
+
+void runMode2RandomLeds() {
+  unsigned long now = millis();
+  if (now - mode2LastChangeTime >= mode2NextInterval) {
+    setAllLedsColor(random(0, 256), random(0, 256), random(0, 256));  // 隨機顏色,依實際函式庫調整
+    mode2LastChangeTime = now;
+    mode2NextInterval = random(150, 400);  // 150~400ms 才換下一次,避免頻率過高
+  }
+}
+```
+
+> 進入 `STATE_MODE2_RUNNING` 時記得把 `mode2LastChangeTime = 0;` 重置,確保一進入就會馬上換一次顏色。
+
 ## 注意事項
 
 1. **不要動原本 `puffin-test` 相關的程式碼**,只加新 topic 的訂閱跟新的 if 分支。
@@ -129,3 +177,4 @@ void loop() {
 4. 全部用 `millis()` 非阻塞寫法,避免 `delay()` 卡住 MQTT loop。
 5. Topic 名稱 `puffin-control` 跟指令字串是跟 App 端約定好的協定,**字串要完全一致**(含大小寫)。
 6. **`INTERACTIVE_EXIT` 不檢查目前狀態**,任何時候收到都要立刻關燈、reset 回 `STATE_IDLE`、恢復 NFC 掃描,是主持人的緊急退出鍵,判斷順序要放在其他指令前面。
+7. **`INTERACTIVE_START` 也刻意不檢查目前狀態**:因為 MQTT 沒有送達保證,主持人有可能按了「進入互動模式」但 Arduino 沒收到,這時 App 端會讓他直接再按一次補送,所以這個指令不論目前在哪個狀態,收到都要重置成 `STATE_WAITING_MODE1`(這不是漏檢查,是刻意設計成可重複送)。

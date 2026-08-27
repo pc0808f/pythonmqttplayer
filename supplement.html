@@ -130,9 +130,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <button
                         @click="startInteractiveMode"
-                        :disabled="interactiveState !== 'idle'"
-                        class="rounded-xl py-3 px-2 font-semibold text-white shadow transition"
-                        :class="interactiveState === 'idle' ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-300 cursor-not-allowed'"
+                        class="rounded-xl py-3 px-2 font-semibold text-white shadow transition bg-purple-500 hover:bg-purple-600"
                     >
                         <i class="fas fa-gamepad mr-1"></i>進入互動模式
                     </button>
@@ -432,7 +430,16 @@
                 },
 
                 async startInteractiveMode() {
-                    if (this.interactiveState !== 'idle') return;
+                    // 不檢查目前狀態：MQTT 沒有送達保證，主持人隨時可以補按重送
+                    // Arduino 端 INTERACTIVE_START 本來就不檢查狀態，任何時候收到都會重置成等待模式一
+                    if (this.mode1Interval) {
+                        clearInterval(this.mode1Interval);
+                        this.mode1Interval = null;
+                    }
+                    if (this.mode2Timeout) {
+                        clearTimeout(this.mode2Timeout);
+                        this.mode2Timeout = null;
+                    }
                     try {
                         await this.sendControlCommand('INTERACTIVE_START');
                         this.interactiveState = 'waiting_mode1';
@@ -466,9 +473,10 @@
                         await this.sendControlCommand('MODE2_START');
                         this.interactiveState = 'mode2_running';
                         this.mode2Timeout = setTimeout(() => {
+                            // 模式二實際跑 7 秒(見 Arduino 燈效規格文件),這裡跟著同步
                             this.interactiveState = 'idle';
                             this.mode2Timeout = null;
-                        }, 4000);
+                        }, 7000);
                     } catch (error) {
                         console.error('啟動模式二失敗:', error);
                     }
