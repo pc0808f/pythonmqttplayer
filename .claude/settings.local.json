@@ -28,7 +28,21 @@
       "Bash(echo \"---EXIT: $?---\")",
       "Bash(git stash *)",
       "Bash(git rm *)",
-      "Bash(grep -iE \"\\\\.exe$|\\\\.zip$\")"
+      "Bash(grep -iE \"\\\\.exe$|\\\\.zip$\")",
+      "Bash(git push *)",
+      "Bash(\"./dist/魔法音樂學院_完整版.exe\")",
+      "Bash(echo \"exe PID: $!\")",
+      "Bash(taskkill //F //IM \"魔法音樂學院_完整版.exe\")",
+      "Bash(awk '{print $5, $NF}')",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'uploads/name' | Sort-Object Name | Select-Object -First 10 Name, CreationTime, LastWriteTime\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'uploads/name' | Sort-Object Name | Select-Object -Last 10 Name, CreationTime, LastWriteTime\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'uploads/family' | Select-Object Name, CreationTime\")",
+      "Bash(git tag *)",
+      "Bash(git status *)",
+      "Bash(git rev-list *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ],
     "deny": []
   }

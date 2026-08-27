@@ -610,9 +610,9 @@ def api_send_mqtt():
 
 # --- 主程式進入點 ---
 if __name__ == '__main__':
-    VERSION = "2.3.0"
+    VERSION = "2.4.0"
     print(f"啟動魔法音樂學院 v{VERSION}...")
-    print(f"新功能: 補送名單頁面 (supplement.html)")
+    print(f"新功能: 補送名單頁新增互動燈光模式控制 (supplement.html)")
     print(f"音效檔基礎路徑: {UPLOAD_FOLDER}")
     
     # 檢查是否在 PyInstaller 環境中
